@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { getContextIdentity } from "@calimero-network/mero-react";
+import { getContextId, getContextIdentity } from "@calimero-network/mero-react";
+import { getMeroJs, downloadBlob } from "../api/meroJsClient";
 import { ClientApiDataSource } from "../api/dataSource/clientApiDataSource";
-import { downloadBlob } from "../api/meroJsClient";
 
 // ── Module-level caches ───────────────────────────────────────────────────────
 
@@ -22,22 +22,34 @@ const cacheVersionListeners = new Set<() => void>();
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+async function resolveExecutorKey(contextId: string): Promise<string> {
+  // Use the active context's identity directly — no extra RPC needed.
+  if (contextId === (getContextId() ?? "")) {
+    return getContextIdentity() ?? "";
+  }
+  // For other contexts (e.g. DM contexts), look up the owned identity.
+  try {
+    const owned = await getMeroJs().admin.getContextIdentitiesOwned(contextId);
+    return (owned as { identities?: string[] }).identities?.[0] ?? "";
+  } catch {
+    return getContextIdentity() ?? "";
+  }
+}
+
 function getProfilesForCtx(contextId: string): Promise<ProfileRow[]> {
   if (profilesForCtx.has(contextId)) return profilesForCtx.get(contextId)!;
 
-  const executorKey = getContextIdentity() ?? "";
-  if (!executorKey) {
-    return Promise.resolve([]);
-  }
-
-  const p = new ClientApiDataSource()
-    .getProfiles(contextId, executorKey)
-    .then((res) => (res.data ?? []) as ProfileRow[])
-    .catch((err) => {
-      console.error("[useAvatarUrl] getProfiles failed", err);
-      profilesForCtx.delete(contextId);
-      return [] as ProfileRow[];
-    });
+  const p = resolveExecutorKey(contextId).then((executorKey) => {
+    if (!executorKey) return [] as ProfileRow[];
+    return new ClientApiDataSource()
+      .getProfiles(contextId, executorKey)
+      .then((res) => (res.data ?? []) as ProfileRow[])
+      .catch((err) => {
+        console.error("[useAvatarUrl] getProfiles failed", err);
+        profilesForCtx.delete(contextId);
+        return [] as ProfileRow[];
+      });
+  });
 
   profilesForCtx.set(contextId, p);
   return p;
@@ -111,6 +123,7 @@ export function useAvatarUrl(
  *  Call immediately after the user updates their avatar. */
 export function invalidateAvatarCache() {
   profilesForCtx.clear();
+  blobUrlCache.forEach((url) => URL.revokeObjectURL(url));
   blobUrlCache.clear();
   _cacheVersion++;
   cacheVersionListeners.forEach((fn) => fn());

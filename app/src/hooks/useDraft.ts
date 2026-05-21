@@ -87,6 +87,7 @@ export function useDraft(channelName: string | undefined): {
       }
 
       debounceRef.current = setTimeout(() => {
+        debounceRef.current = null;
         persistDraft(channel, text);
       }, DEBOUNCE_MS);
     },
