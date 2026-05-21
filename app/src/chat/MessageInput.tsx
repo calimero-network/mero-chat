@@ -805,7 +805,12 @@ export default function MessageInput({
                             thread_last_timestamp: 0,
                           }
                     );
-                    if (!isThread) setDraft(value);
+                    if (!isThread) {
+                      // Mark draft as applied so the pre-populate effect doesn't
+                      // fire again on the channelDraft change caused by this keystroke.
+                      draftAppliedRef.current = selectedChat;
+                      setDraft(value);
+                    }
                   }}
                   onSend={handleSendMessageEnter}
                   placeholder={placeholderText}
