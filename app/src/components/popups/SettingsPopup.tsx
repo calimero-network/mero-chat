@@ -19,6 +19,7 @@ import { GroupApiDataSource, uploadBlobDirect } from "../../api/dataSource/group
 import { ClientApiDataSource } from "../../api/dataSource/clientApiDataSource";
 import { downloadBlob, getMeroJs } from "../../api/meroJsClient";
 import { useToast } from "../../contexts/ToastContext";
+import { invalidateAvatarCache } from "../../hooks/useAvatarUrl";
 // ─── Animations ────────────────────────────────────────────────────────────────
 
 const fadeIn = keyframes`
@@ -543,6 +544,7 @@ export default function SettingsPopup({
           }
         }
 
+        invalidateAvatarCache();
         addToast({ title: "Avatar updated", message: "Your profile picture has been saved.", type: "channel", duration: 3000 });
       } finally {
         setUploading(false);
