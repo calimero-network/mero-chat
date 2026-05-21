@@ -530,6 +530,13 @@ export function useChatHandlers(
             log.debug("ChatHandlers", "User invited to channel, refreshing channel list and members");
             break;
 
+          case "RoleUpdated":
+            // Refresh member list so role badges update immediately for everyone.
+            // useMyChannelRole also subscribes to this event directly to re-fetch
+            // the current user's own role without waiting for the 30s poll.
+            actions.fetchMembers = true;
+            break;
+
           case "ChatJoined":
             actions.fetchMembers = true;
             refs.fetchGroupMembers.current();

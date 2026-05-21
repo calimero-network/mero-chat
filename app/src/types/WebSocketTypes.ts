@@ -19,6 +19,7 @@ export type ExecutionEventKind =
   | "DMCreated"
   | "DMDeleted"
   | "ReactionUpdated"
+  | "RoleUpdated"
   | "NewIdentityUpdated"
   | "InvitationPayloadUpdated"
   | "InvitationAccepted"

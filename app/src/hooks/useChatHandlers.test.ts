@@ -306,6 +306,21 @@ describe("useChatHandlers — DM events", () => {
     expect(mocks.fetchDMs).toHaveBeenCalled();
   });
 
+  it("RoleUpdated: fetches members so role badges update for everyone", () => {
+    const { refs, mocks } = makeRefs();
+    const { result } = renderHook(() =>
+      useChatHandlers(activeChatRef as RefObject<ActiveChat | null>, null, refs),
+    );
+
+    act(() => {
+      result.current.handleExecutionEvents("ctx-1", [ev("RoleUpdated", "some-identity")]);
+    });
+
+    expect(mocks.fetchMembers).toHaveBeenCalledTimes(1);
+    expect(mocks.fetchChannels).not.toHaveBeenCalled();
+    expect(mocks.fetchDMs).not.toHaveBeenCalled();
+  });
+
   it("NewIdentityUpdated: fetches DMs", () => {
     const { refs, mocks } = makeRefs();
     const { result } = renderHook(() =>
