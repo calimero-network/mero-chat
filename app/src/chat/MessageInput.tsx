@@ -696,6 +696,12 @@ export default function MessageInput({
         // P2P sync found no connected peers — expected with a single node.
         // Don't surface this as an error to the user.
         if (/mesh|no.*peer|peer.*sync/i.test(message)) {
+          if (!isThread) clearDraft();
+          clearUploadedImage();
+          clearUploadedFile();
+          setShowUpload(false);
+          setEmojiSelectorOpen(false);
+          handleMessageChange(null);
           return;
         }
         addToast({

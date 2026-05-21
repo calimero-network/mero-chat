@@ -465,6 +465,11 @@ export default function SettingsPopup({
 
     return () => {
       cancelled = true;
+      // Revoke the URL created in this run to prevent leaks on repeated opens.
+      if (avatarObjectUrlRef.current) {
+        URL.revokeObjectURL(avatarObjectUrlRef.current);
+        avatarObjectUrlRef.current = null;
+      }
     };
   }, [isOpen, identity]);
 
