@@ -454,6 +454,9 @@ pub struct MeroChat {
     /// Written by delete_message regardless of AuthoredVector ownership, so
     /// admins/mods can delete messages they didn't author.
     deleted_messages: UnorderedSet<String>,
+    /// Per-user per-channel draft text. Key: "{base58_user_id}:{channel_name}".
+    /// Effectively private — each user only reads/writes their own keys.
+    drafts: UnorderedMap<String, LwwRegister<String>>,
 }
 
 #[app::logic]
@@ -500,6 +503,7 @@ impl MeroChat {
             roles,
             read_receipts: UnorderedMap::new(),
             deleted_messages: UnorderedSet::new(),
+            drafts: UnorderedMap::new(),
         }
     }
 
@@ -668,20 +672,39 @@ impl MeroChat {
 
         let executor_id = Self::executor_id();
 
+        // Announce avatar blob to this context so it replicates to other nodes.
+        let avatar_register: Option<LwwRegister<String>> = if let Some(ref blob_id_str) = avatar {
+            match parse_blob_id_base58(blob_id_str) {
+                Ok(blob_id) => {
+                    let context_id = env::context_id();
+                    if !env::blob_announce_to_context(&blob_id, &context_id) {
+                        app::log!(
+                            "Warning: failed to announce avatar blob {} to context",
+                            blob_id_str
+                        );
+                    }
+                    Some(LwwRegister::new(blob_id_str.clone()))
+                }
+                Err(e) => return Err(format!("Invalid avatar blob ID: {e}")),
+            }
+        } else {
+            None
+        };
+
         if self.profiles.contains(&executor_id).unwrap_or(false) {
             // Preserve the frozen username; only the avatar is mutable.
             if let Ok(Some(existing)) = self.profiles.get(&executor_id) {
                 let frozen_username = existing.username.get().clone();
                 let new_profile = StoredProfile {
                     username: LwwRegister::new(frozen_username),
-                    avatar: avatar.map(LwwRegister::new),
+                    avatar: avatar_register,
                 };
                 let _ = self.profiles.update(&executor_id, new_profile);
             }
         } else {
             let profile = StoredProfile {
                 username: LwwRegister::new(username),
-                avatar: avatar.map(LwwRegister::new),
+                avatar: avatar_register,
             };
             let _ = self.profiles.insert(executor_id, profile);
         }
@@ -702,6 +725,53 @@ impl MeroChat {
             }
         }
         result
+    }
+
+    // ── Drafts ─────────────────────────────────────────────────────────────
+
+    /// Save a draft for the calling user in the given channel.
+    /// Passing an empty string is equivalent to deleting the draft.
+    pub fn save_draft(&mut self, channel: String, text: String) -> app::Result<(), String> {
+        self.require_not_banned()?;
+        let key = format!(
+            "{}:{}",
+            encode_blob_id_base58(&env::executor_id()),
+            channel
+        );
+        if text.is_empty() {
+            let _ = self.drafts.remove(&key);
+        } else {
+            let _ = self.drafts.insert(key, LwwRegister::new(text));
+        }
+        Ok(())
+    }
+
+    /// Return the calling user's draft for the given channel, or an empty
+    /// string if none exists.
+    pub fn get_draft(&self, channel: String) -> String {
+        let key = format!(
+            "{}:{}",
+            encode_blob_id_base58(&env::executor_id()),
+            channel
+        );
+        self.drafts
+            .get(&key)
+            .ok()
+            .flatten()
+            .map(|r| r.get().clone())
+            .unwrap_or_default()
+    }
+
+    /// Delete the calling user's draft for the given channel.
+    pub fn delete_draft(&mut self, channel: String) -> app::Result<(), String> {
+        self.require_not_banned()?;
+        let key = format!(
+            "{}:{}",
+            encode_blob_id_base58(&env::executor_id()),
+            channel
+        );
+        let _ = self.drafts.remove(&key);
+        Ok(())
     }
 
     // ── Moderation: roles + ban gate ───────────────────────────────────────
