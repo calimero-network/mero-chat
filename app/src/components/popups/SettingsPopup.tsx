@@ -521,26 +521,37 @@ export default function SettingsPopup({
         avatarObjectUrlRef.current = newUrl;
         setAvatarObjectUrl(newUrl);
 
-        // Propagate to every channel/DM context the user is a member of.
+        // Always update the currently-active context first (fallback when
+        // listGroupContexts is stale or returns empty — e.g. after make stop).
+        const currentContextId = getContextId();
+        const currentIdentity = getExecutorPublicKey();
+        const clientDs = new ClientApiDataSource();
+        if (currentContextId && currentIdentity) {
+          try {
+            await clientDs.updateProfile(currentContextId, currentIdentity, username, blobId);
+          } catch {
+            // best-effort
+          }
+        }
+
+        // Best-effort: propagate to every other context in the group.
         const contextsRes = await new GroupApiDataSource().listGroupContexts(groupId);
-        if (contextsRes.data) {
-          const clientDs = new ClientApiDataSource();
-          for (const ctx of contextsRes.data) {
-            try {
-              const owned = await getMeroJs().admin.getContextIdentitiesOwned(ctx.contextId);
-              const executorKey = owned.identities?.[0];
-              if (!executorKey) continue;
-              const profilesRes = await clientDs.getProfiles(ctx.contextId, executorKey);
-              const myProfile = profilesRes.data?.find((p) => p.identity === executorKey);
-              await clientDs.updateProfile(
-                ctx.contextId,
-                executorKey,
-                myProfile?.username || username,
-                blobId,
-              );
-            } catch {
-              // best-effort per context
-            }
+        for (const ctx of contextsRes.data ?? []) {
+          if (ctx.contextId === currentContextId) continue; // already done above
+          try {
+            const owned = await getMeroJs().admin.getContextIdentitiesOwned(ctx.contextId);
+            const executorKey = owned.identities?.[0];
+            if (!executorKey) continue;
+            const profilesRes = await clientDs.getProfiles(ctx.contextId, executorKey);
+            const myProfile = profilesRes.data?.find((p) => p.identity === executorKey);
+            await clientDs.updateProfile(
+              ctx.contextId,
+              executorKey,
+              myProfile?.username || username,
+              blobId,
+            );
+          } catch {
+            // best-effort per context
           }
         }
 
