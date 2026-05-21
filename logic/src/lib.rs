@@ -40,6 +40,12 @@ fn parse_blob_id_base58(blob_id_str: &str) -> Result<[u8; BLOB_ID_SIZE], String>
     }
 }
 
+/// Build the storage key for a user's per-channel draft.
+/// Format: "<base58_user_id>:<channel_name>"
+fn draft_key(user_base58: &str, channel: &str) -> String {
+    format!("{user_base58}:{channel}")
+}
+
 fn serialize_blob_id_bytes<S>(
     blob_id_bytes: &[u8; BLOB_ID_SIZE],
     serializer: S,
@@ -733,11 +739,7 @@ impl MeroChat {
     /// Passing an empty string is equivalent to deleting the draft.
     pub fn save_draft(&mut self, channel: String, text: String) -> app::Result<(), String> {
         self.require_not_banned()?;
-        let key = format!(
-            "{}:{}",
-            encode_blob_id_base58(&env::executor_id()),
-            channel
-        );
+        let key = draft_key(&encode_blob_id_base58(&env::executor_id()), &channel);
         if text.is_empty() {
             let _ = self.drafts.remove(&key);
         } else {
@@ -749,11 +751,7 @@ impl MeroChat {
     /// Return the calling user's draft for the given channel, or an empty
     /// string if none exists.
     pub fn get_draft(&self, channel: String) -> String {
-        let key = format!(
-            "{}:{}",
-            encode_blob_id_base58(&env::executor_id()),
-            channel
-        );
+        let key = draft_key(&encode_blob_id_base58(&env::executor_id()), &channel);
         self.drafts
             .get(&key)
             .ok()
@@ -765,11 +763,7 @@ impl MeroChat {
     /// Delete the calling user's draft for the given channel.
     pub fn delete_draft(&mut self, channel: String) -> app::Result<(), String> {
         self.require_not_banned()?;
-        let key = format!(
-            "{}:{}",
-            encode_blob_id_base58(&env::executor_id()),
-            channel
-        );
+        let key = draft_key(&encode_blob_id_base58(&env::executor_id()), &channel);
         let _ = self.drafts.remove(&key);
         Ok(())
     }
@@ -1372,7 +1366,7 @@ impl MeroChat {
 
 #[cfg(test)]
 mod tests {
-    use super::{encode_blob_id_base58, parse_blob_id_base58, Role, BLOB_ID_SIZE};
+    use super::{draft_key, encode_blob_id_base58, parse_blob_id_base58, Role, BLOB_ID_SIZE};
 
     // ── Role-based delete permission logic ─────────────────────────────────────
 
@@ -1480,5 +1474,73 @@ mod tests {
     #[test]
     fn blob_id_size_constant_matches_32() {
         assert_eq!(BLOB_ID_SIZE, 32);
+    }
+
+    // ── Draft key format ────────────────────────────────────────────────────
+
+    #[test]
+    fn draft_key_contains_user_and_channel() {
+        let user = "SomeBase58UserId";
+        let key = draft_key(user, "general");
+        assert_eq!(key, "SomeBase58UserId:general");
+    }
+
+    #[test]
+    fn draft_key_separator_is_colon() {
+        let key = draft_key("abc", "my-channel");
+        let parts: Vec<&str> = key.splitn(2, ':').collect();
+        assert_eq!(parts.len(), 2);
+        assert_eq!(parts[0], "abc");
+        assert_eq!(parts[1], "my-channel");
+    }
+
+    #[test]
+    fn draft_key_with_real_base58_user_id() {
+        let user_bytes = [0x01u8; BLOB_ID_SIZE];
+        let user_b58 = encode_blob_id_base58(&user_bytes);
+        let key = draft_key(&user_b58, "announcements");
+        assert!(key.starts_with(&user_b58));
+        assert!(key.ends_with(":announcements"));
+    }
+
+    #[test]
+    fn draft_key_different_users_produce_different_keys() {
+        let user_a = encode_blob_id_base58(&[0x01u8; BLOB_ID_SIZE]);
+        let user_b = encode_blob_id_base58(&[0x02u8; BLOB_ID_SIZE]);
+        let key_a = draft_key(&user_a, "general");
+        let key_b = draft_key(&user_b, "general");
+        assert_ne!(key_a, key_b);
+    }
+
+    #[test]
+    fn draft_key_same_user_different_channels_produce_different_keys() {
+        let user = encode_blob_id_base58(&[0xaau8; BLOB_ID_SIZE]);
+        let key1 = draft_key(&user, "general");
+        let key2 = draft_key(&user, "random");
+        assert_ne!(key1, key2);
+    }
+
+    #[test]
+    fn draft_key_channel_name_with_colon_is_preserved() {
+        // Channel names shouldn't contain colons, but the key builder must
+        // not silently corrupt them if they do — splitn(2) guarantees the
+        // channel portion is still recoverable.
+        let key = draft_key("user123", "chan:with:colons");
+        let parts: Vec<&str> = key.splitn(2, ':').collect();
+        assert_eq!(parts[1], "chan:with:colons");
+    }
+
+    #[test]
+    fn draft_key_empty_channel_name() {
+        let key = draft_key("userXYZ", "");
+        assert_eq!(key, "userXYZ:");
+    }
+
+    #[test]
+    fn draft_key_is_deterministic() {
+        let user = encode_blob_id_base58(&[0x55u8; BLOB_ID_SIZE]);
+        let k1 = draft_key(&user, "stable");
+        let k2 = draft_key(&user, "stable");
+        assert_eq!(k1, k2);
     }
 }
