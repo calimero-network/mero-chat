@@ -509,12 +509,13 @@ export function useChatHandlers(
             break;
 
           case "ChannelLeft":
+          case "ChannelDeleted":
             actions.fetchChannels = true;
             actions.fetchMembers = true;
             if (contextId === activeChatRef.current?.contextId) {
               refs.onLeftChannel.current(contextId);
             }
-            log.debug("ChatHandlers", "Channel left, refreshing channel list and members");
+            log.debug("ChatHandlers", `${executionEvent.kind}, refreshing channel list and members`);
             break;
 
           case "ChannelInvited":
