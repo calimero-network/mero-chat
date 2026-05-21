@@ -198,6 +198,7 @@ export default function SearchResultMessage({
           <IdentityAvatar
             size="md"
             identity={message.sender}
+            contextId={contextId}
             name={displayName || message.sender}
           />
         </AvatarWrapper>

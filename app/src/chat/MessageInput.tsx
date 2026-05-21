@@ -557,6 +557,11 @@ export default function MessageInput({
     draftAppliedRef.current = undefined;
   }, [selectedChat, clearUploadedFile, clearUploadedImage]);
 
+  // When a thread closes, reset the ref so the channel draft is re-applied.
+  useEffect(() => {
+    if (!isThread) draftAppliedRef.current = undefined;
+  }, [isThread]);
+
   // Pre-populate the editor with the persisted draft when it loads.
   useEffect(() => {
     if (!channelDraft || isThread) return;
