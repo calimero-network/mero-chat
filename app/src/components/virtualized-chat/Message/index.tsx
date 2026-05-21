@@ -9,7 +9,6 @@ import { formatTimeAgo } from "../utils";
 import { downloadBlob } from "../../../api/meroJsClient";
 
 import { POPUP_POSITION_SWITCH_HEIGHT } from "./AutocompleteList";
-import { Avatar } from "./Avatar";
 import { IdentityAvatar } from "../../IdentityAvatar";
 import DeletedMessage from "./DeletedMessage";
 import MessageSendingIcon from "./Icons/MessageSendingIcon";

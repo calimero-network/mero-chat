@@ -17,7 +17,7 @@ const blobFetchInFlight = new Map<string, Promise<string | undefined>>();
 
 // Version counter — incremented by invalidateAvatarCache so all mounted hooks
 // re-run their effects after a user updates their avatar.
-let cacheVersion = 0;
+let _cacheVersion = 0;
 const cacheVersionListeners = new Set<() => void>();
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -97,7 +97,6 @@ export function useAvatarUrl(
     })();
 
     return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [identity, contextId, version]);
 
   return url;
@@ -110,6 +109,6 @@ export function useAvatarUrl(
 export function invalidateAvatarCache() {
   profilesForCtx.clear();
   blobUrlCache.clear();
-  cacheVersion++;
+  _cacheVersion++;
   cacheVersionListeners.forEach((fn) => fn());
 }
