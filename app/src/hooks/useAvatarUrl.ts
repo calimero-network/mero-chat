@@ -1,158 +1,129 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { getContextIdentity } from "@calimero-network/mero-react";
 import { ClientApiDataSource } from "../api/dataSource/clientApiDataSource";
 import { downloadBlob } from "../api/meroJsClient";
 
-type ProfileEntry = { avatarBlobId?: string };
+// ── Module-level caches ───────────────────────────────────────────────────────
 
-// ── Module-level caches (shared across all hook instances) ───────────────────
+type ProfileRow = { identity: string; avatar?: string };
 
-const profilesByContext = new Map<string, Map<string, ProfileEntry>>();
-const profileFetchInFlight = new Map<string, Promise<void>>();
-const blobUrlByBlobId = new Map<string, string>();
+// Unified cache + in-flight dedup: once the promise resolves it stays here so
+// future awaits return the already-resolved value immediately.
+const profilesForCtx = new Map<string, Promise<ProfileRow[]>>();
+
+// blob ID → object URL
+const blobUrlCache = new Map<string, string>();
 const blobFetchInFlight = new Map<string, Promise<string | undefined>>();
 
-// Global version bump — all mounted hooks subscribe; when this increments they
-// re-run their effects and re-fetch profiles from scratch.
+// Version counter — incremented by invalidateAvatarCache so all mounted hooks
+// re-run their effects after a user updates their avatar.
 let cacheVersion = 0;
 const cacheVersionListeners = new Set<() => void>();
 
-function notifyForContext(contextId: string) {
-  for (const [key, fns] of pendingListeners) {
-    if (key.startsWith(`${contextId}:`)) fns.forEach((fn) => fn());
-  }
-}
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-// key: `${contextId}:${identity}` — notified once profiles for a context land
-const pendingListeners = new Map<string, Set<() => void>>();
-
-// ── Async helpers ─────────────────────────────────────────────────────────────
-
-async function ensureProfilesLoaded(contextId: string): Promise<void> {
-  if (profilesByContext.has(contextId)) return;
-  if (profileFetchInFlight.has(contextId)) {
-    await profileFetchInFlight.get(contextId)!;
-    return;
-  }
+function getProfilesForCtx(contextId: string): Promise<ProfileRow[]> {
+  if (profilesForCtx.has(contextId)) return profilesForCtx.get(contextId)!;
 
   const executorKey = getContextIdentity() ?? "";
-  if (!executorKey) return; // not authenticated yet — skip
+  if (!executorKey) {
+    // Not authenticated — do NOT cache, retry on next mount / version bump.
+    console.warn("[useAvatarUrl] getContextIdentity() is empty, skipping profile fetch");
+    return Promise.resolve([]);
+  }
 
-  const api = new ClientApiDataSource();
-  const promise = api
+  console.log(`[useAvatarUrl] fetching profiles for context ${contextId} as ${executorKey}`);
+
+  const p = new ClientApiDataSource()
     .getProfiles(contextId, executorKey)
     .then((res) => {
-      const map = new Map<string, ProfileEntry>();
-      for (const p of res.data ?? []) {
-        if (p.identity) map.set(p.identity, { avatarBlobId: p.avatar ?? undefined });
-      }
-      profilesByContext.set(contextId, map);
+      console.log(`[useAvatarUrl] getProfiles returned ${res.data?.length ?? 0} profiles`, res.data);
+      return (res.data ?? []) as ProfileRow[];
     })
-    .catch(() => {
-      /* silent — effect will retry on next version bump or re-mount */
-    })
-    .finally(() => {
-      profileFetchInFlight.delete(contextId);
-      notifyForContext(contextId);
+    .catch((err) => {
+      console.error("[useAvatarUrl] getProfiles failed", err);
+      // Remove from cache so we can retry later.
+      profilesForCtx.delete(contextId);
+      return [] as ProfileRow[];
     });
 
-  profileFetchInFlight.set(contextId, promise);
-  await promise;
+  profilesForCtx.set(contextId, p);
+  return p;
 }
 
-async function resolveAvatarUrl(
-  blobId: string,
-  contextId: string,
-): Promise<string | undefined> {
-  if (blobUrlByBlobId.has(blobId)) return blobUrlByBlobId.get(blobId);
+async function resolveBlob(blobId: string, contextId: string): Promise<string | undefined> {
+  if (blobUrlCache.has(blobId)) return blobUrlCache.get(blobId);
   if (blobFetchInFlight.has(blobId)) return blobFetchInFlight.get(blobId)!;
 
-  const promise = downloadBlob(blobId, contextId)
+  console.log(`[useAvatarUrl] downloading blob ${blobId} for context ${contextId}`);
+
+  const p = downloadBlob(blobId, contextId)
     .then((blob) => {
       const url = URL.createObjectURL(blob);
-      blobUrlByBlobId.set(blobId, url);
+      blobUrlCache.set(blobId, url);
+      console.log(`[useAvatarUrl] blob ${blobId} resolved to object URL`);
       return url;
     })
-    .catch(() => undefined)
+    .catch((err): undefined => {
+      console.error(`[useAvatarUrl] downloadBlob failed for ${blobId}`, err);
+      return undefined;
+    })
     .finally(() => blobFetchInFlight.delete(blobId));
 
-  blobFetchInFlight.set(blobId, promise);
-  return promise;
+  blobFetchInFlight.set(blobId, p);
+  return p;
 }
 
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
-/** Returns the object URL for an identity's avatar, or undefined while loading / if none set. */
+/** Async-loads the avatar image URL for an identity within a context.
+ *  Returns undefined while loading or when no avatar is set. */
 export function useAvatarUrl(
   identity: string | undefined,
   contextId: string | undefined,
 ): string | undefined {
-  const cacheKey = identity && contextId ? `${contextId}:${identity}` : undefined;
+  const [url, setUrl] = useState<string | undefined>(undefined);
+  const [version, setVersion] = useState(0);
 
-  const [url, setUrl] = useState<string | undefined>(() => {
-    if (!identity || !contextId) return undefined;
-    const blobId = profilesByContext.get(contextId)?.get(identity)?.avatarBlobId;
-    return blobId ? blobUrlByBlobId.get(blobId) : undefined;
-  });
-
-  // Mirror the global version so version bumps from invalidateAvatarCache
-  // re-run the fetch effect below.
-  const [version, setVersion] = useState(cacheVersion);
+  // Subscribe to cache invalidation so we re-fetch after avatar updates.
   useEffect(() => {
     const bump = () => setVersion((v) => v + 1);
     cacheVersionListeners.add(bump);
     return () => { cacheVersionListeners.delete(bump); };
   }, []);
 
-  const tryResolve = useCallback(
-    (cancelled: { value: boolean }) => {
-      if (cancelled.value || !identity || !contextId) return;
-      const blobId = profilesByContext.get(contextId)?.get(identity)?.avatarBlobId;
-      if (!blobId) {
-        setUrl(undefined);
-        return;
-      }
-      if (blobUrlByBlobId.has(blobId)) {
-        setUrl(blobUrlByBlobId.get(blobId));
-        return;
-      }
-      resolveAvatarUrl(blobId, contextId).then((resolved) => {
-        if (!cancelled.value) setUrl(resolved ?? undefined);
-      });
-    },
-    [identity, contextId],
-  );
-
   useEffect(() => {
-    if (!identity || !contextId || !cacheKey) return;
+    if (!identity || !contextId) return;
+    let cancelled = false;
 
-    const cancelled = { value: false };
+    (async () => {
+      const profiles = await getProfilesForCtx(contextId);
+      if (cancelled) return;
 
-    const listener = () => tryResolve(cancelled);
-    if (!pendingListeners.has(cacheKey)) pendingListeners.set(cacheKey, new Set());
-    pendingListeners.get(cacheKey)!.add(listener);
+      const avatarBlobId = profiles.find((p) => p.identity === identity)?.avatar;
+      if (!avatarBlobId) {
+        console.log(`[useAvatarUrl] no avatar blob for identity ${identity} in context ${contextId}`);
+        return;
+      }
 
-    ensureProfilesLoaded(contextId).then(() => tryResolve(cancelled));
+      const resolved = await resolveBlob(avatarBlobId, contextId);
+      if (!cancelled && resolved) setUrl(resolved);
+    })();
 
-    return () => {
-      cancelled.value = true;
-      pendingListeners.get(cacheKey)?.delete(listener);
-    };
-    // version is intentionally included: a cache invalidation bumps this and
-    // forces the effect to re-run + re-fetch profiles.
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [identity, contextId, cacheKey, version]);
+  }, [identity, contextId, version]);
 
   return url;
 }
 
 // ── Cache control ─────────────────────────────────────────────────────────────
 
-/** Evict cached profiles and notify all mounted hooks to re-fetch.
- *  Call after the local user updates their own avatar. */
+/** Clear all profile + blob caches and force every mounted hook to re-fetch.
+ *  Call immediately after the user updates their avatar. */
 export function invalidateAvatarCache() {
-  profilesByContext.clear();
-  blobUrlByBlobId.clear();
+  profilesForCtx.clear();
+  blobUrlCache.clear();
   cacheVersion++;
   cacheVersionListeners.forEach((fn) => fn());
 }
