@@ -15,9 +15,6 @@ const profilesForCtx = new Map<string, Promise<ProfileRow[]>>();
 const blobUrlCache = new Map<string, string>();
 const blobFetchInFlight = new Map<string, Promise<string | undefined>>();
 
-// Version counter — incremented by invalidateAvatarCache so all mounted hooks
-// re-run their effects after a user updates their avatar.
-let _cacheVersion = 0;
 const cacheVersionListeners = new Set<() => void>();
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -125,6 +122,5 @@ export function invalidateAvatarCache() {
   profilesForCtx.clear();
   blobUrlCache.forEach((url) => URL.revokeObjectURL(url));
   blobUrlCache.clear();
-  _cacheVersion++;
   cacheVersionListeners.forEach((fn) => fn());
 }
