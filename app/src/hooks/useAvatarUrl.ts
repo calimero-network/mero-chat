@@ -27,22 +27,14 @@ function getProfilesForCtx(contextId: string): Promise<ProfileRow[]> {
 
   const executorKey = getContextIdentity() ?? "";
   if (!executorKey) {
-    // Not authenticated — do NOT cache, retry on next mount / version bump.
-    console.warn("[useAvatarUrl] getContextIdentity() is empty, skipping profile fetch");
     return Promise.resolve([]);
   }
 
-  console.log(`[useAvatarUrl] fetching profiles for context ${contextId} as ${executorKey}`);
-
   const p = new ClientApiDataSource()
     .getProfiles(contextId, executorKey)
-    .then((res) => {
-      console.log(`[useAvatarUrl] getProfiles returned ${res.data?.length ?? 0} profiles`, res.data);
-      return (res.data ?? []) as ProfileRow[];
-    })
+    .then((res) => (res.data ?? []) as ProfileRow[])
     .catch((err) => {
       console.error("[useAvatarUrl] getProfiles failed", err);
-      // Remove from cache so we can retry later.
       profilesForCtx.delete(contextId);
       return [] as ProfileRow[];
     });
@@ -55,13 +47,10 @@ async function resolveBlob(blobId: string, contextId: string): Promise<string | 
   if (blobUrlCache.has(blobId)) return blobUrlCache.get(blobId);
   if (blobFetchInFlight.has(blobId)) return blobFetchInFlight.get(blobId)!;
 
-  console.log(`[useAvatarUrl] downloading blob ${blobId} for context ${contextId}`);
-
   const p = downloadBlob(blobId, contextId)
     .then((blob) => {
       const url = URL.createObjectURL(blob);
       blobUrlCache.set(blobId, url);
-      console.log(`[useAvatarUrl] blob ${blobId} resolved to object URL`);
       return url;
     })
     .catch((err): undefined => {
@@ -101,10 +90,7 @@ export function useAvatarUrl(
       if (cancelled) return;
 
       const avatarBlobId = profiles.find((p) => p.identity === identity)?.avatar;
-      if (!avatarBlobId) {
-        console.log(`[useAvatarUrl] no avatar blob for identity ${identity} in context ${contextId}`);
-        return;
-      }
+      if (!avatarBlobId) return;
 
       const resolved = await resolveBlob(avatarBlobId, contextId);
       if (!cancelled && resolved) setUrl(resolved);
