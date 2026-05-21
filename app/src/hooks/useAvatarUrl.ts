@@ -94,6 +94,10 @@ export function useAvatarUrl(
     if (!identity || !contextId) return;
     let cancelled = false;
 
+    // Clear immediately so a revoked/stale URL doesn't linger while we re-fetch.
+    // Avatar falls back to initials during the async window.
+    setUrl(undefined);
+
     (async () => {
       const profiles = await getProfilesForCtx(contextId);
       if (cancelled) return;

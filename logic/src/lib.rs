@@ -699,11 +699,12 @@ impl MeroChat {
 
         if self.profiles.contains(&executor_id).unwrap_or(false) {
             // Preserve the frozen username; only the avatar is mutable.
+            // If no new avatar is provided (caller passed null), keep the existing one.
             if let Ok(Some(existing)) = self.profiles.get(&executor_id) {
                 let frozen_username = existing.username.get().clone();
                 let new_profile = StoredProfile {
                     username: LwwRegister::new(frozen_username),
-                    avatar: avatar_register,
+                    avatar: avatar_register.or(existing.avatar),
                 };
                 let _ = self.profiles.update(&executor_id, new_profile);
             }
