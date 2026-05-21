@@ -1648,7 +1648,7 @@ export class ClientApiDataSource implements ClientApi {
         return {
           data: null,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          error: { code: response.error.code, message: (response.error.error.cause.info as any).message },
+          error: { code: response.error.code, message: (response.error.error?.cause?.info as any)?.message ?? "saveDraft failed" },
         };
       }
       return { data: undefined, error: null };
@@ -1731,7 +1731,7 @@ export class ClientApiDataSource implements ClientApi {
           error: {
             code: response.error.code,
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            message: (response.error.error.cause.info as any).message,
+            message: (response.error.error?.cause?.info as any)?.message ?? "updateProfile failed",
           },
         };
       }

@@ -90,10 +90,13 @@ export function useAvatarUrl(
       if (cancelled) return;
 
       const avatarBlobId = profiles.find((p) => p.identity === identity)?.avatar;
-      if (!avatarBlobId) return;
+      if (!avatarBlobId) {
+        setUrl(undefined);
+        return;
+      }
 
       const resolved = await resolveBlob(avatarBlobId, contextId);
-      if (!cancelled && resolved) setUrl(resolved);
+      if (!cancelled) setUrl(resolved);
     })();
 
     return () => { cancelled = true; };

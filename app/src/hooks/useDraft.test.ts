@@ -320,7 +320,7 @@ describe("useDraft — channel switch", () => {
     vi.useRealTimers();
   });
 
-  it("cancels pending debounced save when channel changes", async () => {
+  it("flushes pending debounced save immediately when channel changes", async () => {
     const { result, rerender } = renderHook(({ ch }) => useDraft(ch), {
       initialProps: { ch: "channel-a" },
     });
@@ -328,9 +328,14 @@ describe("useDraft — channel switch", () => {
 
     act(() => result.current.setDraft("unsaved text"));
     rerender({ ch: "channel-b" });
-    act(() => vi.advanceTimersByTime(DEBOUNCE_MS));
 
-    expect(mockSaveDraft).not.toHaveBeenCalled();
+    // Flush happens synchronously in the cleanup — no need to advance timers.
+    expect(mockSaveDraft).toHaveBeenCalledWith(
+      "ctx-123",
+      "identity-abc",
+      "channel-a",
+      "unsaved text",
+    );
   });
 
   it("loads the new channel draft after switching", async () => {

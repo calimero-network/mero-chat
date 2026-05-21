@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getContextId, getContextIdentity } from "@calimero-network/mero-react";
 import { ClientApiDataSource } from "../api/dataSource/clientApiDataSource";
+import { emptyText } from "../utils/markdownParser";
 
 const DEBOUNCE_MS = 4_000;
 
@@ -22,19 +23,17 @@ export function useDraft(channelName: string | undefined): {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const channelRef = useRef(channelName);
   channelRef.current = channelName;
+  const pendingTextRef = useRef<string>("");
 
   // Load draft when channel changes.
   useEffect(() => {
-    if (!channelName) {
-      setDraftState("");
-      return;
-    }
+    // Immediately clear stale draft so hasDraft never reflects the previous channel.
+    setDraftState("");
+
+    if (!channelName) return;
     const contextId = getContextId();
     const executorPublicKey = getContextIdentity();
-    if (!contextId || !executorPublicKey) {
-      setDraftState("");
-      return;
-    }
+    if (!contextId || !executorPublicKey) return;
 
     let cancelled = false;
     (async () => {
@@ -45,10 +44,16 @@ export function useDraft(channelName: string | undefined): {
 
     return () => {
       cancelled = true;
-      // Flush any pending save for the channel we're leaving.
+      // Flush any pending save for the channel we're leaving before clearing the timer.
+      // Use `channelName` from the closure — channelRef.current is already the new value.
       if (debounceRef.current) {
         clearTimeout(debounceRef.current);
         debounceRef.current = null;
+        const ctx = getContextId();
+        const key = getContextIdentity();
+        if (ctx && key && channelName && pendingTextRef.current) {
+          void new ClientApiDataSource().saveDraft(ctx, key, channelName, pendingTextRef.current);
+        }
       }
     };
   }, [channelName]);
@@ -62,14 +67,16 @@ export function useDraft(channelName: string | undefined): {
 
   const setDraft = useCallback(
     (text: string) => {
-      setDraftState(text);
+      const isEmpty = !text || emptyText.test(text);
+      setDraftState(isEmpty ? "" : text);
+      pendingTextRef.current = isEmpty ? "" : text;
 
       if (debounceRef.current) clearTimeout(debounceRef.current);
 
       if (!channelRef.current) return;
       const channel = channelRef.current;
 
-      if (!text) {
+      if (isEmpty) {
         // Clear immediately when field is emptied.
         const contextId = getContextId();
         const executorPublicKey = getContextIdentity();
@@ -88,6 +95,7 @@ export function useDraft(channelName: string | undefined): {
 
   const clearDraft = useCallback(() => {
     setDraftState("");
+    pendingTextRef.current = "";
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
       debounceRef.current = null;
@@ -99,5 +107,5 @@ export function useDraft(channelName: string | undefined): {
     void new ClientApiDataSource().deleteDraft(contextId, executorPublicKey, channel);
   }, []);
 
-  return { draft, hasDraft: draft.length > 0, setDraft, clearDraft };
+  return { draft, hasDraft: draft.length > 0 && !emptyText.test(draft), setDraft, clearDraft };
 }
