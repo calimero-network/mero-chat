@@ -75,6 +75,13 @@ function persistAuthHashOnLoad(): { accessToken: string; refreshToken: string; n
         expires_at: expiresAtMs,
       }),
     );
+    // Remove the hash so MeroProvider's parseAuthCallback doesn't re-process
+    // the original tokens and overwrite the (possibly refreshed) ones we just wrote.
+    window.history.replaceState(
+      {},
+      "",
+      window.location.pathname + window.location.search,
+    );
     return { accessToken, refreshToken, nodeUrl: nodeUrl?.trim() ?? "", expiresAt: expiresAtMs };
   }
   return null;
