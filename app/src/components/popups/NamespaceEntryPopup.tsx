@@ -782,7 +782,7 @@ export default function NamespaceEntryPopup({ isAuthenticated, isConfigSet, onLo
               type="button"
               variant="secondary"
               style={{ width: "100%", marginTop: "0.5rem" }}
-              onClick={() => setStep("select")}
+              onClick={() => { setError(""); setStep("select"); }}
             >
               ← Back
             </Button>
