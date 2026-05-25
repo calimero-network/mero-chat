@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import { ClientApiDataSource } from "../api/dataSource/clientApiDataSource";
 
 // Online = heartbeat seen within this window. 90s = 3× the 30s poll interval
@@ -14,8 +14,8 @@ interface UsePresenceResult {
  * Registers the local user as online in `contextId` (by calling `heartbeat`
  * every 30 s) and polls `get_presence` to find out who else is online.
  *
- * Returns `isOnline(identity)` — a stable callback that tests membership in
- * the latest online set without triggering re-renders on every poll.
+ * Returns `isOnline(identity)` — reads from state so the component re-renders
+ * when the online set changes, making dots appear/disappear correctly.
  *
  * Pass `undefined` for either argument to disable the hook (no calls made).
  */
@@ -23,7 +23,8 @@ export function usePresence(
   contextId: string | undefined,
   executorPublicKey: string | undefined,
 ): UsePresenceResult {
-  // Keep the online set in a ref so `isOnline` is stable across renders.
+  // State drives re-renders; ref keeps the latest set for the stable callback.
+  const [onlineSet, setOnlineSet] = useState<Set<string>>(new Set());
   const onlineRef = useRef<Set<string>>(new Set());
 
   const runHeartbeat = useCallback(async () => {
@@ -37,7 +38,9 @@ export function usePresence(
     const api = new ClientApiDataSource();
     const resp = await api.getPresence(contextId, executorPublicKey, THRESHOLD_MS);
     if (resp.data) {
-      onlineRef.current = new Set(resp.data);
+      const next = new Set(resp.data);
+      onlineRef.current = next;
+      setOnlineSet(next);
     }
   }, [contextId, executorPublicKey]);
 
@@ -56,9 +59,10 @@ export function usePresence(
     return () => clearInterval(id);
   }, [contextId, executorPublicKey, runHeartbeat, refreshPresence]);
 
+  // Read from state (not ref) so callers re-render when the set changes.
   const isOnline = useCallback(
-    (identity: string) => onlineRef.current.has(identity),
-    [],
+    (identity: string) => onlineSet.has(identity),
+    [onlineSet],
   );
 
   return { isOnline };

@@ -581,15 +581,16 @@ export default function MessageInput({
   const applyMention = useCallback(
     (name: string) => {
       const html = message?.text ?? "";
-      const lastAt = html.lastIndexOf(`@${mentionQuery}`);
-      if (lastAt === -1) {
+      // Match `@mentionQuery` only when NOT followed by more word chars (\w),
+      // and only the last such occurrence. This prevents replacing `@john`
+      // inside `@johnathan` when the query is `john`.
+      const escaped = mentionQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const pattern = new RegExp(`@${escaped}(?!\\w)(?=[^@]*$)`);
+      if (!pattern.test(html)) {
         setShowMentions(false);
         return;
       }
-      const newHtml =
-        html.slice(0, lastAt) +
-        `@${name} ` +
-        html.slice(lastAt + 1 + mentionQuery.length);
+      const newHtml = html.replace(pattern, `@${name} `);
       setMessage(
         message
           ? { ...message, text: newHtml }
