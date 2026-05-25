@@ -255,12 +255,14 @@ const MessageReactionList: React.FC<{
   closeMessageReactionsList: () => void;
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
+  handleReaction?: (reaction: string) => void;
 }> = ({
   reactions,
   selectedReaction,
   closeMessageReactionsList,
   isOpen,
   setIsOpen,
+  handleReaction,
 }) => {
   const [selected, setSelected] = useState<
     | {
@@ -306,7 +308,10 @@ const MessageReactionList: React.FC<{
                   <ReactionEmojiWrapper
                     key={id}
                     $selected={selected?.reaction === reaction.reaction}
-                    onClick={() => setSelected(reaction)}
+                    onClick={() => {
+                      setSelected(reaction);
+                      handleReaction?.(reaction.reaction);
+                    }}
                   >
                     {reaction.reaction}
                     <ReactionCountWrapper>

@@ -28,6 +28,11 @@ function writeLeftContexts(ids: Set<string>) {
   } catch { /* */ }
 }
 
+// Per-session set of groupIds that have already had their initial open-channel
+// auto-join sweep. Once swept, new open channels are NOT auto-joined so the
+// user can discover and join them manually via Browse Channels.
+const openChannelSweptGroups = new Set<string>();
+
 export interface ContextIdentityMap {
   [contextId: string]: string;
 }
@@ -52,6 +57,12 @@ export function useGroupContexts() {
       const groupApi = new GroupApiDataSource();
       const clientApi = new ClientApiDataSource();
       const idMap: ContextIdentityMap = { ...identitiesRef.current };
+
+      // True on the first fetchGroupContexts call for this groupId this
+      // session — triggers auto-join of ALL open channels so new users
+      // land with public channels already joined. After this sweep the
+      // flag is cleared so newly-created channels require a manual join.
+      const isInitialSweep = !openChannelSweptGroups.has(groupId);
 
       async function enrichEntries(
         entries: { contextId: string; alias?: string }[],
@@ -89,7 +100,12 @@ export function useGroupContexts() {
         //    catches up — no extra frontend polling round-trip needed.
         //    Open subgroups are explicitly excluded: discovery there stays
         //    opt-in (user clicks "Join" in the sidebar).
-        if (isDirectMember || visibility !== "open") {
+        // Auto-join when:
+        // 1. isDirectMember: admin added us explicitly (open or restricted)
+        // 2. visibility !== "open": restricted — let server decide entitlement
+        // 3. isInitialSweep + open: first entry this session — join all
+        //    existing public channels so the user lands with them all joined
+        if (isDirectMember || visibility !== "open" || isInitialSweep) {
           await Promise.all(
             ids.filter((id) => !idMap[id]).map(async (ctxId) => {
               try {
@@ -237,6 +253,10 @@ export function useGroupContexts() {
       } catch (e) {
         log.debug("useGroupContexts", "Failed to fetch subgroups", e);
       }
+
+      // Mark this group as swept so subsequent fetches in this session
+      // don't auto-join newly created open channels.
+      openChannelSweptGroups.add(groupId);
 
       const allChannels: GroupContextChannel[] = [];
       subgroupChannelsMap.forEach((sgChannels) => allChannels.push(...sgChannels));

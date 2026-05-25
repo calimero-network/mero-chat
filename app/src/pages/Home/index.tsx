@@ -846,7 +846,8 @@ export default function Home({ isConfigSet }: { isConfigSet: boolean }) {
 
       const existingDm = privateDMs.find((dm) => dm.otherIdentity === otherIdentity);
       if (existingDm) {
-        return { data: "", error: "Cannot create DM: already exists" };
+        void updateSelectedActiveChatRef.current(existingDm);
+        return { data: existingDm.contextId, error: "" };
       }
 
       const otherUsername = dmMembers.get(otherIdentity) || chatMembers.get(otherIdentity) || "";
