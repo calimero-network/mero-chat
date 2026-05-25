@@ -1,6 +1,6 @@
 import { styled } from "styled-components";
 import StartDMPopup, { type CreateContextResult } from "../popups/StartDMPopup";
-import { useCallback, memo } from "react";
+import { useCallback, useMemo, memo } from "react";
 import { getGroupId } from "../../constants/config";
 import { useCurrentGroupPermissions } from "../../hooks/useCurrentGroupPermissions";
 import type { DMContextInfo } from "../../hooks/useDMs";
@@ -69,6 +69,21 @@ const DMHeader = memo(function DMHeader({
   const canShowCreate =
     !resolved || permissions.isAdmin || permissions.canCreateSubgroup;
 
+  // Strip out members you already have a DM with so they don't even appear
+  // in the suggestion dropdown — prevents duplicate DMs at the source.
+  const filteredMembers = useMemo(() => {
+    const existingDmIdentities = new Set(
+      privateDMs.map((dm) => dm.otherIdentity).filter(Boolean),
+    );
+    const filtered = new Map<string, string>();
+    for (const [identity, label] of availableMembers) {
+      if (!existingDmIdentities.has(identity)) {
+        filtered.set(identity, label);
+      }
+    }
+    return filtered;
+  }, [availableMembers, privateDMs]);
+
   const isValidIdentityId = useCallback(
     (value: string) => {
       const identity = value.trim();
@@ -80,9 +95,9 @@ const DMHeader = memo(function DMHeader({
           error: "Cannot create DM: the user is not in the workspace",
         };
       }
-      // Block (and disable Next via StartDMPopup's disabled-on-invalid wiring)
-      // when a DM with this identity already exists, instead of letting the
-      // user submit and surface the same error post-hoc from createDM.
+      // Belt-and-suspenders check — filteredMembers already hides existing DM
+      // contacts, but guard here too in case of a race between DM creation and
+      // the next filteredMembers recompute.
       if (privateDMs.some((dm) => dm.otherIdentity === identity)) {
         return {
           isValid: false,
@@ -109,7 +124,7 @@ const DMHeader = memo(function DMHeader({
               </svg>
             </PlusButton>
           }
-          chatMembers={availableMembers}
+          chatMembers={filteredMembers}
           validator={isValidIdentityId}
           functionLoader={createDM}
           onOpen={onFetchMembers}
