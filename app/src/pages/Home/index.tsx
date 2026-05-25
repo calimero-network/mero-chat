@@ -844,7 +844,9 @@ export default function Home({ isConfigSet }: { isConfigSet: boolean }) {
         };
       }
 
-      const existingDm = privateDMs.find((dm) => dm.otherIdentity === otherIdentity);
+      const existingDm = privateDMs.find(
+        (dm) => (dm.namespaceMemberIdentity || dm.otherIdentity) === otherIdentity,
+      );
       if (existingDm) {
         const existingChat: ActiveChat = {
           type: "direct_message",

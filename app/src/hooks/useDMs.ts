@@ -16,6 +16,11 @@ export interface DMContextInfo extends GroupContextChannel {
   otherAlias: string;
   otherIdentity: string;
   myIdentity: string;
+  // The namespace group member identity of the other person — always the
+  // value parsed from the DM subgroup alias, never overwritten by the
+  // context executor key from get_profiles. Used for deduplication checks
+  // in the New DM dropdown (which keys members by namespace identity).
+  namespaceMemberIdentity: string;
 }
 
 /**
@@ -137,7 +142,12 @@ export function useDMs() {
           }
 
           let otherUsername = "";
-          let otherIdentity = discovery?.otherIdentity || "";
+          // namespaceMemberIdentity is from the DM alias — always a namespace
+          // group member identity. Kept separate because otherIdentity gets
+          // overwritten by the context executor key when get_profiles succeeds,
+          // making it useless for membership/dedup lookups.
+          const namespaceMemberIdentity = discovery?.otherIdentity || "";
+          let otherIdentity = namespaceMemberIdentity;
           let otherAlias = otherIdentity
             ? memberAliasByIdentity.get(otherIdentity) || ""
             : "";
@@ -201,6 +211,7 @@ export function useDMs() {
             otherUsername,
             otherAlias,
             otherIdentity,
+            namespaceMemberIdentity,
             myIdentity: joinedIdentity || "",
             contextIdentity: joinedIdentity,
             isJoined: Boolean(joinedIdentity),

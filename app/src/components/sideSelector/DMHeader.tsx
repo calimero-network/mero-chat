@@ -71,9 +71,14 @@ const DMHeader = memo(function DMHeader({
 
   // Strip out members you already have a DM with so they don't even appear
   // in the suggestion dropdown — prevents duplicate DMs at the source.
+  // Use namespaceMemberIdentity (from the DM alias) because dm.otherIdentity
+  // gets overwritten by the context executor key when get_profiles succeeds,
+  // making it a different format from the namespace identity keys in availableMembers.
   const filteredMembers = useMemo(() => {
     const existingDmIdentities = new Set(
-      privateDMs.map((dm) => dm.otherIdentity).filter(Boolean),
+      privateDMs
+        .map((dm) => dm.namespaceMemberIdentity || dm.otherIdentity)
+        .filter(Boolean),
     );
     const filtered = new Map<string, string>();
     for (const [identity, label] of availableMembers) {
@@ -98,7 +103,7 @@ const DMHeader = memo(function DMHeader({
       // Belt-and-suspenders check — filteredMembers already hides existing DM
       // contacts, but guard here too in case of a race between DM creation and
       // the next filteredMembers recompute.
-      if (privateDMs.some((dm) => dm.otherIdentity === identity)) {
+      if (privateDMs.some((dm) => (dm.namespaceMemberIdentity || dm.otherIdentity) === identity)) {
         return {
           isValid: false,
           error: "A DM with this user already exists",
