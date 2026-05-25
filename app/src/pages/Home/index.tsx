@@ -416,6 +416,12 @@ export default function Home({ isConfigSet }: { isConfigSet: boolean }) {
     }, 3000);
   }, []);
 
+  // Called when the New DM popup opens — refresh both the member list and the
+  // DM list so the popup's dropdown excludes contacts who already have a DM.
+  const onFetchDmMembersForPopup = useCallback(async () => {
+    await Promise.all([debouncedFetchGroupMembers(), fetchDmsWithGroup()]);
+  }, [debouncedFetchGroupMembers, fetchDmsWithGroup]);
+
   const mainMessagesRef = useRef(mainMessages);
   const threadMessagesRef = useRef(threadMessages);
   const playSoundForMessageRef = useRef(playSoundForMessage);
@@ -966,7 +972,7 @@ export default function Home({ isConfigSet }: { isConfigSet: boolean }) {
       dmMembers={dmMembers}
       createDM={createDM}
       privateDMs={privateDMs}
-      onFetchDmMembers={debouncedFetchGroupMembers}
+      onFetchDmMembers={onFetchDmMembersForPopup}
       unreadCounts={unreadCounts}
       loadInitialThreadMessages={loadInitialThreadMessages}
       incomingThreadMessages={threadMessages.incomingMessages}
