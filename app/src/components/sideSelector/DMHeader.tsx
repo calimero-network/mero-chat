@@ -120,7 +120,7 @@ const DMHeader = memo(function DMHeader({
       {canShowCreate && (
         <StartDMPopup
           title="Create a new private DM context"
-          placeholder="Search by member identity"
+          placeholder="Enter username"
           buttonText="Next"
           toggle={
             <PlusButton>

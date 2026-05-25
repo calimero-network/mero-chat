@@ -61,6 +61,7 @@ interface ChannelHeaderProps {
   title: string;
   isCollapsed?: boolean;
   onChannelCreated?: () => void;
+  onFetchChannels?: () => void;
   onChannelSelected?: (chat: ActiveChat) => void;
   existingChannelNames?: string[];
   targetGroupId?: string;
@@ -100,10 +101,10 @@ const ChannelHeader = memo(function ChannelHeader(props: ChannelHeaderProps) {
     channelName: string,
     isPublic: boolean,
     _isReadOnly: boolean,
-  ) => {
+  ): Promise<{ error: string } | void> => {
     if (!groupId) {
       log.error("ChannelHeader", "No groupId configured — cannot create channel");
-      return;
+      return { error: "No workspace configured" };
     }
 
     const lower = channelName.toLowerCase();
@@ -112,7 +113,7 @@ const ChannelHeader = memo(function ChannelHeader(props: ChannelHeaderProps) {
     );
     if (isDuplicate) {
       log.warn("ChannelHeader", `Channel name "${channelName}" already exists`);
-      return;
+      return { error: "A channel with this name already exists" };
     }
 
     const nodeApi = new ContextApiDataSource();
@@ -136,8 +137,9 @@ const ChannelHeader = memo(function ChannelHeader(props: ChannelHeaderProps) {
       name: channelName,
     });
     if (sgResp.error || !sgResp.data) {
+      const msg = sgResp.error?.message || "A channel with this name may already exist";
       log.error("ChannelHeader", "Failed to create channel subgroup", sgResp.error);
-      return;
+      return { error: msg };
     }
     const channelGroupId = sgResp.data.groupId;
 
@@ -166,8 +168,9 @@ const ChannelHeader = memo(function ChannelHeader(props: ChannelHeaderProps) {
     });
 
     if (createResp.error || !createResp.data) {
+      const msg = createResp.error?.message || "Failed to create channel context";
       log.error("ChannelHeader", "Failed to create channel context", createResp.error);
-      return;
+      return { error: msg };
     }
 
     const contextIdJustCreated = createResp.data.contextId;
@@ -200,6 +203,10 @@ const ChannelHeader = memo(function ChannelHeader(props: ChannelHeaderProps) {
     if (!targetGroupId || isLoadingDefaultVisibility) {
       return;
     }
+
+    // Refresh the channel list so the duplicate check is current when the
+    // user starts typing — fire-and-forget, no need to await.
+    props.onFetchChannels?.();
 
     setIsLoadingDefaultVisibility(true);
     const groupApi = new GroupApiDataSource();
