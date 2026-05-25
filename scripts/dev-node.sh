@@ -200,13 +200,11 @@ fi
 [ -n "$APP_ID" ] || { red "Could not get APP_ID"; exit 1; }
 green "App installed (id: $APP_ID)"
 
-# ── Create workspace + channel ────────────────────────────────────────────────
+# ── Create workspace ─────────────────────────────────────────────────────────
 
-step "Setting up workspace and channels"
+step "Setting up workspace (namespace only — no channels or DMs)"
 
 NAMESPACE_ID=""
-CONTEXT_ID=""
-MEMBER_KEY=""
 
 # Create namespace via REST API
 NS_RES=$(curl -sf -X POST "${NODE_URL}/admin-api/namespaces" \
@@ -226,83 +224,29 @@ fi
 if [ -n "$NAMESPACE_ID" ]; then
   green "Workspace created (id: ${NAMESPACE_ID})"
 
-  # ── Permission model (rc.37+, 1-group-per-context) ─────────────────────────
-  # Each channel/DM = its own subgroup under the namespace root, with one
-  # context inside. Members hold caps at the *namespace* level that let them
-  # start (and clean up) their own channel-groups:
-  #   1   CAN_CREATE_CONTEXT       — inside their own subgroup (they're admin)
+  # Permission model (rc.37+, 1-group-per-context):
+  #   1   CAN_CREATE_CONTEXT       — inside their own subgroup
   #   2   CAN_INVITE_MEMBERS       — invite into the workspace
   #   4   CAN_JOIN_OPEN_SUBGROUPS  — auto-join open channels
-  #  32   CAN_CREATE_SUBGROUP      — create a channel-group at root (rc.37)
-  #  64   CAN_DELETE_SUBGROUP      — delete a channel-group they own (rc.37)
-  # 128   CAN_MANAGE_VISIBILITY    — flip open↔restricted on their group (rc.37)
+  #  32   CAN_CREATE_SUBGROUP      — create a channel-group at root
+  #  64   CAN_DELETE_SUBGROUP      — delete a channel-group they own
+  # 128   CAN_MANAGE_VISIBILITY    — flip open↔restricted on their group
   # Total = 231.
   curl -sf -X PUT "${NODE_URL}/admin-api/groups/${NAMESPACE_ID}/settings/default-capabilities" \
     -H "Authorization: Bearer ${ACCESS_TOKEN}" -H "Content-Type: application/json" \
     -d '{"defaultCapabilities":231}' &>/dev/null \
-    && green "Namespace member caps set (231 = create/delete subgroup + manage visibility + create context + invite + join-open)" \
+    && green "Namespace member caps set (231)" \
     || yellow "Could not set namespace caps (non-fatal)"
 
-  # Namespace's own subgroup-visibility = open so all child channel-groups are
-  # discoverable / joinable by namespace members via parent-walk.
+  # Open subgroup-visibility so channels created by members are discoverable.
   curl -sf -X PUT "${NODE_URL}/admin-api/groups/${NAMESPACE_ID}/settings/subgroup-visibility" \
     -H "Authorization: Bearer ${ACCESS_TOKEN}" -H "Content-Type: application/json" \
     -d '{"subgroupVisibility":"open"}' &>/dev/null || true
-
-  # ── #general = standalone open subgroup + one context inside ───────────────
-  step "Creating #general (open subgroup + context)"
-
-  GEN_SG_RES=$(curl -sf -X POST "${NODE_URL}/admin-api/namespaces/${NAMESPACE_ID}/groups" \
-    -H "Authorization: Bearer ${ACCESS_TOKEN}" -H "Content-Type: application/json" \
-    -d '{"groupAlias":"general"}' 2>/dev/null) || GEN_SG_RES="{}"
-  GENERAL_SG_ID=$(echo "$GEN_SG_RES" | jq -r '.data.groupId // empty' 2>/dev/null)
-  if [ -z "$GENERAL_SG_ID" ]; then
-    yellow "Could not create #general subgroup — skipped"
-  else
-    green "  general subgroup: $GENERAL_SG_ID"
-
-    # Open visibility so all namespace members auto-join the channel.
-    curl -sf -X PUT "${NODE_URL}/admin-api/groups/${GENERAL_SG_ID}/settings/subgroup-visibility" \
-      -H "Authorization: Bearer ${ACCESS_TOKEN}" -H "Content-Type: application/json" \
-      -d '{"subgroupVisibility":"open"}' &>/dev/null || true
-
-    TIMESTAMP=$(date +%s)
-    INIT_JSON="{\"name\":\"general\",\"context_type\":\"Channel\",\"description\":\"\",\"created_at\":${TIMESTAMP},\"creator_username\":\"\"}"
-    INIT_BYTES=$(printf '%s' "$INIT_JSON" | python3 -c \
-      "import sys; d=sys.stdin.buffer.read(); print('['+','.join(str(b) for b in d)+']')" 2>/dev/null || echo "[]")
-
-    CTX_RES=$(curl -sf -X POST "${NODE_URL}/admin-api/contexts" \
-      -H "Authorization: Bearer ${ACCESS_TOKEN}" \
-      -H "Content-Type: application/json" \
-      -d "$(jq -n \
-            --arg appId "$APP_ID" \
-            --arg groupId "$GENERAL_SG_ID" \
-            --argjson initParams "$INIT_BYTES" \
-            '{applicationId: $appId, protocol: "near", groupId: $groupId, alias: "general", initializationParams: $initParams}')" \
-      2>/dev/null) || CTX_RES="{}"
-    CONTEXT_ID=$(echo "$CTX_RES" | jq -r '.data.contextId // .data.id // empty' 2>/dev/null || true)
-    MEMBER_KEY=$(echo "$CTX_RES" | jq -r '.data.memberPublicKey // .data.member_public_key // empty' 2>/dev/null || true)
-
-    if [ -n "$CONTEXT_ID" ]; then
-      green "  general context: ${CONTEXT_ID}"
-      curl -sf -X PUT "${NODE_URL}/admin-api/groups/${GENERAL_SG_ID}/contexts/${CONTEXT_ID}/visibility" \
-        -H "Authorization: Bearer ${ACCESS_TOKEN}" -H "Content-Type: application/json" \
-        -d '{"mode":"open"}' &>/dev/null || true
-    else
-      yellow "  Could not create #general context"
-    fi
-  fi
 else
   yellow "Could not create workspace — create one from the app after logging in"
 fi
 
 # ── Done ─────────────────────────────────────────────────────────────────────
-
-printf '\n'
-printf '\033[1;32m══════════════════════════════════════════\033[0m\n'
-printf '\033[1;32m  Dev node ready\033[0m\n'
-printf '\033[1;32m══════════════════════════════════════════\033[0m\n'
-# ── Write .env.integration for Playwright ────────────────────────────────────
 
 ENV_FILE="$REPO_ROOT/app/.env.integration"
 {
@@ -313,12 +257,16 @@ ENV_FILE="$REPO_ROOT/app/.env.integration"
   printf 'E2E_ACCESS_TOKEN_2=\n'
   printf 'E2E_REFRESH_TOKEN_2=\n'
   printf 'E2E_GROUP_ID=%s\n'       "${NAMESPACE_ID:-}"
-  printf 'E2E_CONTEXT_ID=%s\n'     "${CONTEXT_ID:-}"
-  printf 'E2E_MEMBER_KEY=%s\n'     "${MEMBER_KEY:-}"
+  printf 'E2E_CONTEXT_ID=\n'
+  printf 'E2E_MEMBER_KEY=\n'
   printf 'E2E_MEMBER_KEY_2=\n'
 } > "$ENV_FILE"
 green "Wrote $ENV_FILE"
 
+printf '\n'
+printf '\033[1;32m══════════════════════════════════════════\033[0m\n'
+printf '\033[1;32m  Dev node ready\033[0m\n'
+printf '\033[1;32m══════════════════════════════════════════\033[0m\n'
 printf '\n'
 printf '  Node URL:   \033[1m%s\033[0m\n' "$NODE_URL"
 printf '  Username:   \033[1m%s\033[0m\n' "$ADMIN_USER"
@@ -327,17 +275,11 @@ printf '  App ID:     %s\n' "$APP_ID"
 if [ -n "${NAMESPACE_ID:-}" ]; then
   printf '  Workspace:  %s\n' "$NAMESPACE_ID"
 fi
-if [ -n "${CONTEXT_ID:-}" ]; then
-  printf '  Channel:    %s  (#general)\n' "$CONTEXT_ID"
-fi
-if [ -n "${MEMBER_KEY:-}" ]; then
-  printf '  Identity:   %s\n' "$MEMBER_KEY"
-fi
 printf '  Logs:       /tmp/curb-dev-node.log\n'
 printf '\n'
 printf '  Next step:\n'
 printf '    \033[36mmake dev\033[0m   →  open http://localhost:5173, connect to %s\n' "$NODE_URL"
 printf '\n'
 printf '  When done:\n'
-printf '    \033[36m./scripts/dev-node.sh --stop\033[0m\n'
+printf '    \033[36mmake stop\033[0m\n'
 printf '\n'
