@@ -850,27 +850,17 @@ export default function Home({ isConfigSet }: { isConfigSet: boolean }) {
         };
       }
 
-      const existingDm = privateDMs.find(
+      // Always fetch a fresh DM list — privateDMs in the closure may be stale
+      // (the popup's onOpen refresh may not have completed when createDM fires).
+      const freshDms = await fetchDmsWithGroup();
+      const existingDm = freshDms.find(
         (dm) => (dm.namespaceMemberIdentity || dm.otherIdentity) === otherIdentity,
       );
       if (existingDm) {
-        const existingChat: ActiveChat = {
-          type: "direct_message",
-          contextId: existingDm.contextId,
-          id: existingDm.contextId,
-          name: getDmDisplayName({
-            otherUsername: existingDm.otherUsername,
-            otherAlias: existingDm.otherAlias,
-            otherIdentity: existingDm.otherIdentity,
-            contextId: existingDm.contextId,
-          }),
-          username: existingDm.otherUsername || undefined,
-          readOnly: false,
-          isSynced: true,
-          contextIdentity: existingDm.contextIdentity,
+        return {
+          data: "",
+          error: "A DM with this person already exists",
         };
-        void updateSelectedActiveChatRef.current(existingChat);
-        return { data: existingDm.contextId, error: "" };
       }
 
       const otherUsername = dmMembers.get(otherIdentity) || chatMembers.get(otherIdentity) || "";
