@@ -846,7 +846,22 @@ export default function Home({ isConfigSet }: { isConfigSet: boolean }) {
 
       const existingDm = privateDMs.find((dm) => dm.otherIdentity === otherIdentity);
       if (existingDm) {
-        void updateSelectedActiveChatRef.current(existingDm);
+        const existingChat: ActiveChat = {
+          type: "direct_message",
+          contextId: existingDm.contextId,
+          id: existingDm.contextId,
+          name: getDmDisplayName({
+            otherUsername: existingDm.otherUsername,
+            otherAlias: existingDm.otherAlias,
+            otherIdentity: existingDm.otherIdentity,
+            contextId: existingDm.contextId,
+          }),
+          username: existingDm.otherUsername || undefined,
+          readOnly: false,
+          isSynced: true,
+          contextIdentity: existingDm.contextIdentity,
+        };
+        void updateSelectedActiveChatRef.current(existingChat);
         return { data: existingDm.contextId, error: "" };
       }
 
