@@ -23,6 +23,7 @@ interface ChatSearchOverlayProps {
   onLoadMoreSearch: () => void | Promise<void>;
   onClose: () => void;
   searchContextId: string;
+  onResultClick?: (contextId: string) => void;
 }
 
 const SearchOverlay = styled.div`
@@ -174,6 +175,7 @@ export default function ChatSearchOverlay({
   onLoadMoreSearch,
   onClose,
   searchContextId,
+  onResultClick,
 }: ChatSearchOverlayProps) {
   return (
     <SearchOverlay>
@@ -238,10 +240,19 @@ export default function ChatSearchOverlay({
                 {searchResults.map((message, index) => (
                   <SearchResultItem
                     key={`${message.id}-${message.timestamp}-${index}`}
+                    onClick={
+                      onResultClick && (message.contextId ?? searchContextId)
+                        ? () =>
+                            onResultClick(
+                              message.contextId ?? searchContextId,
+                            )
+                        : undefined
+                    }
+                    style={onResultClick ? { cursor: "pointer" } : undefined}
                   >
                     <SearchResultMessage
                       message={message}
-                      contextId={searchContextId}
+                      contextId={message.contextId ?? searchContextId}
                     />
                   </SearchResultItem>
                 ))}

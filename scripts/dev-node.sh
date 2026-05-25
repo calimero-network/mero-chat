@@ -111,16 +111,11 @@ step "Nuking existing node (clean slate)"
 nuke_node
 green "Clean slate ready"
 
-# ── Build WASM if needed ──────────────────────────────────────────────────────
+# ── Build WASM (always, so dev node picks up latest logic changes) ────────────
 
-step "Checking WASM"
-if [ ! -f "$WASM_PATH" ]; then
-  yellow "curb.wasm not found — building (first run is slow)…"
-  (cd "$REPO_ROOT/logic" && bash build.sh)
-  green "curb.wasm built"
-else
-  green "curb.wasm exists"
-fi
+step "Building WASM"
+(cd "$REPO_ROOT/logic" && bash build.sh)
+green "curb.wasm built"
 
 # ── Init node (idempotent) ────────────────────────────────────────────────────
 
@@ -202,7 +197,7 @@ green "App installed (id: $APP_ID)"
 
 # ── Create workspace ─────────────────────────────────────────────────────────
 
-step "Setting up workspace (namespace only — no channels or DMs)"
+step "Setting up workspace"
 
 NAMESPACE_ID=""
 
@@ -246,6 +241,78 @@ else
   yellow "Could not create workspace — create one from the app after logging in"
 fi
 
+# ── Create #general channel context (needed for RPC tests) ───────────────────
+
+CONTEXT_ID=""
+MEMBER_KEY=""
+
+if [ -n "$NAMESPACE_ID" ]; then
+  step "Creating #general channel"
+
+  # 1. Create a subgroup for the channel
+  SG_RES=$(curl -sf -X POST "${NODE_URL}/admin-api/namespaces/${NAMESPACE_ID}/groups" \
+    -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+    -H "Content-Type: application/json" \
+    -d '{"groupAlias":"general"}' 2>/dev/null) || SG_RES="{}"
+  GENERAL_GROUP_ID=$(echo "$SG_RES" | jq -r '.data.groupId // empty' 2>/dev/null || true)
+
+  if [ -z "$GENERAL_GROUP_ID" ]; then
+    GENERAL_GROUP_ID=$(curl -sf "${NODE_URL}/admin-api/groups/${NAMESPACE_ID}/subgroups" \
+      -H "Authorization: Bearer ${ACCESS_TOKEN}" 2>/dev/null \
+      | jq -r '(.subgroups // .data // .) | if type=="array" then .[0].group_id // .[0].groupId else empty end' \
+      2>/dev/null || true)
+  fi
+
+  if [ -n "$GENERAL_GROUP_ID" ]; then
+    green "General subgroup: $GENERAL_GROUP_ID"
+
+    curl -sf -X PUT "${NODE_URL}/admin-api/groups/${GENERAL_GROUP_ID}/settings/subgroup-visibility" \
+      -H "Authorization: Bearer ${ACCESS_TOKEN}" -H "Content-Type: application/json" \
+      -d '{"subgroupVisibility":"open"}' &>/dev/null || true
+
+    # 2. Create the context (channel) inside the subgroup
+    INIT_JSON='{"name":"general","context_type":"Channel","description":"","created_at":1751952997,"creator_username":""}'
+    INIT_BYTES=$(printf '%s' "$INIT_JSON" | python3 -c \
+      "import sys; d=sys.stdin.buffer.read(); print('['+','.join(str(b) for b in d)+']')" 2>/dev/null || echo "[]")
+
+    CTX_RES=$(curl -sf -X POST "${NODE_URL}/admin-api/contexts" \
+      -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+      -H "Content-Type: application/json" \
+      -d "$(jq -n \
+            --arg appId "$APP_ID" \
+            --arg groupId "$GENERAL_GROUP_ID" \
+            --argjson initParams "$INIT_BYTES" \
+            '{applicationId: $appId, protocol: "near", groupId: $groupId, alias: "general", initializationParams: $initParams}')" \
+      2>/dev/null) || CTX_RES="{}"
+
+    CONTEXT_ID=$(echo "$CTX_RES" | jq -r '.data.contextId // .data.id // empty' 2>/dev/null || true)
+    MEMBER_KEY=$(echo "$CTX_RES" | jq -r '.data.memberPublicKey // .data.member_public_key // empty' 2>/dev/null || true)
+
+    # Fallback: list contexts in subgroup
+    if [ -z "$CONTEXT_ID" ]; then
+      CONTEXT_ID=$(curl -sf "${NODE_URL}/admin-api/groups/${GENERAL_GROUP_ID}/contexts" \
+        -H "Authorization: Bearer ${ACCESS_TOKEN}" 2>/dev/null \
+        | jq -r '(.data // .) | if type=="array" then .[0].contextId // .[0].id else empty end' \
+        2>/dev/null || true)
+    fi
+
+    # Fallback: fetch identity from context
+    if [ -n "$CONTEXT_ID" ] && [ -z "$MEMBER_KEY" ]; then
+      MEMBER_KEY=$(curl -sf "${NODE_URL}/admin-api/contexts/${CONTEXT_ID}/identities-owned" \
+        -H "Authorization: Bearer ${ACCESS_TOKEN}" 2>/dev/null \
+        | jq -r '(.data // .) | if type=="array" then .[0] else (.identities[0] // .items[0]) end' \
+        2>/dev/null || true)
+    fi
+
+    [ -n "$CONTEXT_ID" ] && green "Context ID: $CONTEXT_ID" \
+      || yellow "Could not get context ID (RPC tests will skip)"
+    [ -n "$MEMBER_KEY" ] && green "Member key: $MEMBER_KEY" \
+      || yellow "Could not get member key (RPC tests will skip)"
+  else
+    yellow "Could not create general subgroup (RPC tests will skip)"
+  fi
+fi
+
 # ── Done ─────────────────────────────────────────────────────────────────────
 
 ENV_FILE="$REPO_ROOT/app/.env.integration"
@@ -256,9 +323,10 @@ ENV_FILE="$REPO_ROOT/app/.env.integration"
   printf 'E2E_NODE_URL_2=\n'
   printf 'E2E_ACCESS_TOKEN_2=\n'
   printf 'E2E_REFRESH_TOKEN_2=\n'
-  printf 'E2E_GROUP_ID=%s\n'       "${NAMESPACE_ID:-}"
-  printf 'E2E_CONTEXT_ID=\n'
-  printf 'E2E_MEMBER_KEY=\n'
+  printf 'E2E_GROUP_ID=%s\n'         "${NAMESPACE_ID:-}"
+  printf 'E2E_CONTEXT_GROUP_ID=%s\n' "${GENERAL_GROUP_ID:-}"
+  printf 'E2E_CONTEXT_ID=%s\n'      "${CONTEXT_ID:-}"
+  printf 'E2E_MEMBER_KEY=%s\n'      "${MEMBER_KEY:-}"
   printf 'E2E_MEMBER_KEY_2=\n'
 } > "$ENV_FILE"
 green "Wrote $ENV_FILE"

@@ -786,16 +786,15 @@ impl MeroChat {
     }
 
     /// Return base58 identity strings of members whose last heartbeat is
-    /// within `threshold_ms` milliseconds of the current time.
-    /// Assumes `env::time_now()` returns milliseconds since epoch (same unit
-    /// as JS `Date.now()`). If it returns nanoseconds, the caller should
-    /// pass `threshold_ms * 1_000_000` instead.
-    pub fn get_presence(&self, threshold_ms: u64) -> Vec<String> {
+    /// within `threshold_ns` nanoseconds of the current time.
+    /// `env::time_now()` returns nanoseconds since epoch, so the caller
+    /// should pass milliseconds × 1_000_000 (e.g. 90_000 ms → 90_000_000_000 ns).
+    pub fn get_presence(&self, threshold_ns: u64) -> Vec<String> {
         let now = env::time_now();
         let mut online = Vec::new();
         if let Ok(entries) = self.heartbeats.entries() {
             for (uid, ts) in entries {
-                if now.saturating_sub(*ts.get()) <= threshold_ms {
+                if now.saturating_sub(*ts.get()) <= threshold_ns {
                     online.push(uid.to_string());
                 }
             }

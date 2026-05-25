@@ -1770,7 +1770,7 @@ export class ClientApiDataSource implements ClientApi {
         {
           contextId,
           method: ClientMethod.GET_PRESENCE,
-          argsJson: { threshold_ms: thresholdMs },
+          argsJson: { threshold_ns: thresholdMs },
           executorPublicKey,
         },
         { headers: { "Content-Type": "application/json" }, timeout: 5000 },

@@ -63,14 +63,14 @@ const AvatarWrapper = styled.div`
   flex-shrink: 0;
 `;
 
-const OnlineDot = styled.span`
+const OnlineDot = styled.span<{ $online: boolean }>`
   position: absolute;
   bottom: -1px;
   right: -1px;
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #a5ff11;
+  background: ${({ $online }) => ($online ? "#a5ff11" : "rgba(255,255,255,0.22)")};
   border: 1.5px solid #0e0e10;
   pointer-events: none;
 `;
@@ -145,14 +145,14 @@ function UserItem({
       {isCollapsed ? (
         <AvatarWrapper>
           <IdentityAvatar size="xs" identity={dm.otherIdentity} contextId={dm.contextId} name={displayName} />
-          {isOnline(dm.otherIdentity) && <OnlineDot />}
+          <OnlineDot $online={isOnline(dm.otherIdentity)} />
         </AvatarWrapper>
       ) : (
         <>
           <UserInfoContainer>
             <AvatarWrapper>
               <IdentityAvatar size="xs" identity={dm.otherIdentity} contextId={dm.contextId} name={displayName} />
-              {isOnline(dm.otherIdentity) && <OnlineDot />}
+              <OnlineDot $online={isOnline(dm.otherIdentity)} />
             </AvatarWrapper>
             <NameContainer>{displayName}</NameContainer>
           </UserInfoContainer>

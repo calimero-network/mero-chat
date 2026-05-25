@@ -36,7 +36,7 @@ export function usePresence(
   const refreshPresence = useCallback(async () => {
     if (!contextId || !executorPublicKey) return;
     const api = new ClientApiDataSource();
-    const resp = await api.getPresence(contextId, executorPublicKey, THRESHOLD_MS);
+    const resp = await api.getPresence(contextId, executorPublicKey, THRESHOLD_MS * 1_000_000);
     if (resp.data) {
       const next = new Set(resp.data);
       onlineRef.current = next;

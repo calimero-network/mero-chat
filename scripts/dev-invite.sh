@@ -88,6 +88,41 @@ curl -sf -X POST "${NODE_2_URL}/admin-api/groups/${GROUP_ID}/sync" \
   -H "Content-Type: application/json" -d '{}' &>/dev/null \
   && green "Sync triggered" || yellow "Sync failed (non-fatal)"
 
+# ── 4. Node2 joins the #general context ──────────────────────────────────────
+
+CONTEXT_ID="${E2E_CONTEXT_ID:-}"
+MEMBER_KEY_2=""
+
+if [ -n "$CONTEXT_ID" ]; then
+  step "Node2 joining context $CONTEXT_ID"
+
+  # Give node2 a moment to sync before joining
+  sleep 2
+
+  JOIN_CTX=$(curl -sf -X POST "${NODE_2_URL}/admin-api/contexts/${CONTEXT_ID}/join" \
+    -H "Authorization: Bearer ${ACCESS_TOKEN_2}" \
+    -H "Content-Type: application/json" -d '{}' 2>/dev/null) || JOIN_CTX="{}"
+  MEMBER_KEY_2=$(echo "$JOIN_CTX" | jq -r '.data.memberPublicKey // .data.member_public_key // empty' 2>/dev/null || true)
+
+  if [ -z "$MEMBER_KEY_2" ]; then
+    MEMBER_KEY_2=$(curl -sf "${NODE_2_URL}/admin-api/contexts/${CONTEXT_ID}/identities-owned" \
+      -H "Authorization: Bearer ${ACCESS_TOKEN_2}" 2>/dev/null \
+      | jq -r '(.data // .) | if type=="array" then .[0] else (.identities[0] // .items[0]) end' \
+      2>/dev/null || true)
+  fi
+
+  if [ -n "$MEMBER_KEY_2" ]; then
+    green "Node2 member key: $MEMBER_KEY_2"
+    sed -i.bak -e "s|^E2E_MEMBER_KEY_2=.*|E2E_MEMBER_KEY_2=${MEMBER_KEY_2}|" "$ENV_FILE" \
+      && rm -f "${ENV_FILE}.bak"
+    green "Updated $ENV_FILE with node2 member key"
+  else
+    yellow "Could not get node2 member key (2-node RPC tests will skip)"
+  fi
+else
+  yellow "E2E_CONTEXT_ID not set in $ENV_FILE — skipping node2 context join"
+fi
+
 printf '\n'
 printf '\033[1;32m══════════════════════════════════════════\033[0m\n'
 printf '\033[1;32m  Node2 invited into node1 workspace\033[0m\n'
