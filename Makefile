@@ -1,4 +1,4 @@
-.PHONY: help setup install build dev dev-node dev-node2 start test test-all test-full unit e2e workflows ci ci-stop \
+.PHONY: help setup install build dev dev-node dev-node2 start test test-all test-full unit e2e workflows workflows-no-build ci ci-stop \
         logic-build app-install app-build app-typecheck app-lint clean run-all
 
 # ── Help ───────────────────────────────────────────────────────────────────────
@@ -156,6 +156,9 @@ WORKFLOW_FILES := \
 	workflows/dm.yml
 
 workflows: logic-build
+	@bash scripts/workflows.sh $(WORKFLOW_FILES)
+
+workflows-no-build:
 	@bash scripts/workflows.sh $(WORKFLOW_FILES)
 
 # Shell-based integration driver. Complements merobox by exposing real

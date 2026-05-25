@@ -106,10 +106,16 @@ function UserItem({
   unread,
 }: UserItemProps) {
   const [isJoinOpen, setIsJoinOpen] = useState(false);
-  const { isOnline } = usePresence(
+  const myContextKey = dm.isJoined ? (dm.contextIdentity ?? "") : "";
+  const { isOnline, hasOtherOnline } = usePresence(
     dm.isJoined ? dm.contextId : undefined,
     dm.isJoined ? dm.contextIdentity : undefined,
   );
+  // isOnline(dm.otherIdentity) works once getProfiles resolves the context executor key.
+  // hasOtherOnline fallback handles the case where dm.otherIdentity is still a
+  // namespace key (getProfiles not yet resolved / cross-node delay).
+  const otherIsOnline =
+    isOnline(dm.otherIdentity) || (myContextKey ? hasOtherOnline(myContextKey) : false);
 
   const displayName = getDmDisplayName({
     otherUsername: dm.otherUsername,
@@ -145,14 +151,14 @@ function UserItem({
       {isCollapsed ? (
         <AvatarWrapper>
           <IdentityAvatar size="xs" identity={dm.otherIdentity} contextId={dm.contextId} name={displayName} />
-          <OnlineDot $online={isOnline(dm.otherIdentity)} />
+          <OnlineDot $online={otherIsOnline} />
         </AvatarWrapper>
       ) : (
         <>
           <UserInfoContainer>
             <AvatarWrapper>
               <IdentityAvatar size="xs" identity={dm.otherIdentity} contextId={dm.contextId} name={displayName} />
-              <OnlineDot $online={isOnline(dm.otherIdentity)} />
+              <OnlineDot $online={otherIsOnline} />
             </AvatarWrapper>
             <NameContainer>{displayName}</NameContainer>
           </UserInfoContainer>

@@ -8,6 +8,10 @@ const HEARTBEAT_INTERVAL_MS = 30_000;
 
 interface UsePresenceResult {
   isOnline: (identity: string) => boolean;
+  // For 2-person DMs: true if ANY key other than `myKey` has a recent heartbeat.
+  // Use this when you can't guarantee `dm.otherIdentity` is a context executor key
+  // (e.g. getProfiles hasn't resolved yet and it's still a namespace member key).
+  hasOtherOnline: (myKey: string) => boolean;
 }
 
 /**
@@ -65,5 +69,11 @@ export function usePresence(
     [onlineSet],
   );
 
-  return { isOnline };
+  const hasOtherOnline = useCallback(
+    (myKey: string) =>
+      onlineSet.size > 1 || (onlineSet.size === 1 && !onlineSet.has(myKey)),
+    [onlineSet],
+  );
+
+  return { isOnline, hasOtherOnline };
 }
