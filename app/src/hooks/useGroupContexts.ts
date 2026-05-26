@@ -234,16 +234,18 @@ export function useGroupContexts() {
                   (m) => m.identity === selfIdentity,
                 );
               if (sgListResp.data) {
-                // Belt-and-suspenders: also drop any context whose own
-                // alias is DM-prefixed, in case a subgroup is renamed but
-                // still hosts DM contexts.
+                // Belt-and-suspenders: drop contexts whose own alias is
+                // DM-prefixed (subgroup rename edge case).
                 const channelEntries = sgListResp.data.filter(
                   (e) => !(e.alias ?? "").startsWith(DM_CONTEXT_ALIAS_PREFIX),
                 );
-                const sgChannels = await enrichEntries(
-                  channelEntries,
-                  visibility,
-                  isDirectMember,
+                const sgChannels = (
+                  await enrichEntries(channelEntries, visibility, isDirectMember)
+                ).filter(
+                  // Drop DM contexts that leaked here because the DM subgroup's
+                  // routing alias (DM_CONTEXT_...) isn't returned by listSubgroups,
+                  // so the alias-prefix filter above misses them.
+                  (ch) => ch.info?.context_type !== "Dm",
                 );
                 subgroupChannelsMap.set(sg.groupId, sgChannels);
               }

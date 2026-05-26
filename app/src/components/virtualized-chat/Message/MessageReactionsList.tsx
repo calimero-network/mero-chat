@@ -310,7 +310,6 @@ const MessageReactionList: React.FC<{
                     $selected={selected?.reaction === reaction.reaction}
                     onClick={() => {
                       setSelected(reaction);
-                      handleReaction?.(reaction.reaction);
                     }}
                   >
                     {reaction.reaction}

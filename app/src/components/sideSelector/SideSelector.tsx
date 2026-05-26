@@ -262,6 +262,7 @@ const SideMenuContent = memo(function SideMenuContent({
         title="Channels"
         isCollapsed={isCollapsed}
         onChannelCreated={onChannelCreated}
+        onFetchChannels={onChannelCreated}
         onChannelSelected={onChannelSelected}
         existingChannelNames={existingChannelNames}
       />
