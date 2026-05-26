@@ -214,34 +214,37 @@ const ChannelHeader = memo(function ChannelHeader(props: ChannelHeaderProps) {
     setIsLoadingDefaultVisibility(true);
     const groupApi = new GroupApiDataSource();
 
-    // Fetch subgroups and group info in parallel so the validator has
-    // fresh server-side names before the user starts typing.
-    const [subgroupsResp, groupResp] = await Promise.all([
-      groupApi.listSubgroups(targetGroupId),
-      groupApi.getGroup(targetGroupId),
-    ]);
+    try {
+      // Fetch subgroups and group info in parallel so the validator has
+      // fresh server-side names before the user starts typing.
+      const [subgroupsResp, groupResp] = await Promise.all([
+        groupApi.listSubgroups(targetGroupId),
+        groupApi.getGroup(targetGroupId),
+      ]);
 
-    if (subgroupsResp.data) {
-      setLiveSubgroupNames(
-        subgroupsResp.data.map((sg) => sg.alias ?? "").filter(Boolean),
-      );
-    }
-
-    if (groupResp.data?.subgroupVisibility) {
-      setDefaultVisibility(getChannelVisibilityOption(groupResp.data.subgroupVisibility));
-    } else {
-      setDefaultVisibility("public");
-      if (groupResp.error) {
-        log.error(
-          "ChannelHeader",
-          "Failed to read group default visibility, falling back to public",
-          groupResp.error,
+      if (subgroupsResp.data) {
+        setLiveSubgroupNames(
+          subgroupsResp.data.map((sg) => sg.alias ?? "").filter(Boolean),
         );
       }
-    }
 
-    setIsLoadingDefaultVisibility(false);
-    setIsOpen(true);
+      if (groupResp.data?.subgroupVisibility) {
+        setDefaultVisibility(getChannelVisibilityOption(groupResp.data.subgroupVisibility));
+      } else {
+        setDefaultVisibility("public");
+        if (groupResp.error) {
+          log.error(
+            "ChannelHeader",
+            "Failed to read group default visibility, falling back to public",
+            groupResp.error,
+          );
+        }
+      }
+
+      setIsOpen(true);
+    } finally {
+      setIsLoadingDefaultVisibility(false);
+    }
   }, [isLoadingDefaultVisibility, setIsOpen, groupId]);
 
   return (
