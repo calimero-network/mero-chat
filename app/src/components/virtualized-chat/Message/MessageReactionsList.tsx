@@ -262,7 +262,7 @@ const MessageReactionList: React.FC<{
   closeMessageReactionsList,
   isOpen,
   setIsOpen,
-  handleReaction,
+  handleReaction: _handleReaction,
 }) => {
   const [selected, setSelected] = useState<
     | {

@@ -2,8 +2,8 @@ import { useEffect, useRef, useCallback, useState } from "react";
 import { ClientApiDataSource } from "../api/dataSource/clientApiDataSource";
 
 // Online = heartbeat seen within this window. 10s = 2× the 5s poll interval.
-const THRESHOLD_MS = 10_000;
-const HEARTBEAT_INTERVAL_MS = 5_000;
+export const THRESHOLD_MS = 10_000;
+export const HEARTBEAT_INTERVAL_MS = 5_000;
 
 interface UsePresenceResult {
   isOnline: (identity: string) => boolean;

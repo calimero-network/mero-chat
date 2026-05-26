@@ -12,7 +12,7 @@
 
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { usePresence } from "./usePresence";
+import { usePresence, THRESHOLD_MS, HEARTBEAT_INTERVAL_MS } from "./usePresence";
 
 // ── Mock ClientApiDataSource ────────────────────────────────────────────────
 
@@ -73,12 +73,12 @@ describe("usePresence", () => {
     expect(mockGetPresence.mock.calls[0][1]).toBe(KEY);
   });
 
-  it("passes threshold_ns = 90_000 × 1_000_000 to getPresence", async () => {
+  it("passes threshold_ns = THRESHOLD_MS × 1_000_000 to getPresence", async () => {
     renderHook(() => usePresence(CTX, KEY));
     await flushPromises();
 
     const thresholdArg = mockGetPresence.mock.calls[0][2] as number;
-    expect(thresholdArg).toBe(90_000 * 1_000_000);
+    expect(thresholdArg).toBe(THRESHOLD_MS * 1_000_000);
   });
 
   it("isOnline returns true for identities in getPresence response", async () => {
@@ -110,10 +110,10 @@ describe("usePresence", () => {
     expect(result.current.isOnline("anyone.near")).toBe(false);
   });
 
-  it("polls again on the 30s interval", async () => {
+  it("polls again on the interval", async () => {
     mockGetPresence
       .mockResolvedValueOnce({ data: [], error: null })              // initial poll
-      .mockResolvedValueOnce({ data: ["alice.near"], error: null }); // after 30s
+      .mockResolvedValueOnce({ data: ["alice.near"], error: null }); // after interval
 
     const { result } = renderHook(() => usePresence(CTX, KEY));
 
@@ -121,16 +121,16 @@ describe("usePresence", () => {
     await flushPromises();
     expect(result.current.isOnline("alice.near")).toBe(false);
 
-    // Advance 30 seconds → interval fires, then flush the resulting promises
+    // Advance one interval → fires, then flush the resulting promises
     await act(async () => {
-      vi.advanceTimersByTime(30_000);
+      vi.advanceTimersByTime(HEARTBEAT_INTERVAL_MS);
     });
     await flushPromises();
 
     expect(result.current.isOnline("alice.near")).toBe(true);
   });
 
-  it("heartbeat is called again on the 30s interval", async () => {
+  it("heartbeat is called again on the interval", async () => {
     renderHook(() => usePresence(CTX, KEY));
 
     await flushPromises();
@@ -138,7 +138,7 @@ describe("usePresence", () => {
     expect(initialCalls).toBeGreaterThan(0);
 
     await act(async () => {
-      vi.advanceTimersByTime(30_000);
+      vi.advanceTimersByTime(HEARTBEAT_INTERVAL_MS);
     });
     await flushPromises();
 
@@ -195,7 +195,7 @@ describe("usePresence", () => {
     expect(result.current.isOnline("bob.near")).toBe(true);
 
     await act(async () => {
-      vi.advanceTimersByTime(30_000);
+      vi.advanceTimersByTime(HEARTBEAT_INTERVAL_MS);
     });
     await flushPromises();
 
@@ -218,7 +218,7 @@ describe("usePresence", () => {
 
     // Second poll returns error response — online set should retain previous value
     await act(async () => {
-      vi.advanceTimersByTime(30_000);
+      vi.advanceTimersByTime(HEARTBEAT_INTERVAL_MS);
     });
     await flushPromises();
 
