@@ -343,16 +343,11 @@ export class GroupApiDataSource implements GroupApi {
 
   async listGroups(): ApiResponse<GroupSummary[]> {
     try {
-      // When VITE_APPLICATION_ID is set, filter server-side to only namespaces
-      // belonging to this app. Fall back to /namespaces (all), then /groups for
-      // older merod versions.
-      const appId = import.meta.env.VITE_APPLICATION_ID as string | undefined;
+      // /namespaces is the correct endpoint (matches POST /namespaces in createGroup).
+      // Fall back to /groups for older merod versions.
       let response;
       try {
-        const url = appId
-          ? `${this.base()}/namespaces/for-application/${appId}`
-          : `${this.base()}/namespaces`;
-        response = await axios.get(url, {
+        response = await axios.get(`${this.base()}/namespaces`, {
           headers: getAuthHeaders(),
         });
       } catch (firstError) {
