@@ -87,7 +87,15 @@ export function useDMs() {
         subgroups.map(async (sg) => {
           const ctxResp = await groupApi.listGroupContexts(sg.groupId);
           if (ctxResp.data) {
-            contextEntries.push(...ctxResp.data);
+            // Carry the subgroup alias as a fallback: the server may not echo
+            // the alias back on individual context entries, so parseDmAlias
+            // would get undefined and namespaceMemberIdentity would be "".
+            contextEntries.push(
+              ...ctxResp.data.map((entry) => ({
+                ...entry,
+                alias: entry.alias ?? sg.alias,
+              })),
+            );
           } else if (ctxResp.error) {
             log.debug("useDMs", `listGroupContexts failed for ${sg.groupId}`, ctxResp.error);
           }

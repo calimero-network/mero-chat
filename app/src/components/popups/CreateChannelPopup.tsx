@@ -205,6 +205,7 @@ export default function CreateChannelPopup({
 
   const handleOpenChange = (newOpen: boolean) => {
     if (newOpen) setIsOpen(newOpen);
+    else handleClose();
   };
 
   const isInvalid = !!(inputValue && !validInput && errorMessage);

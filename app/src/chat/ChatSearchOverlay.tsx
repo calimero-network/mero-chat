@@ -178,8 +178,8 @@ export default function ChatSearchOverlay({
   onResultClick,
 }: ChatSearchOverlayProps) {
   return (
-    <SearchOverlay>
-      <SearchOverlayPanel>
+    <SearchOverlay onClick={onClose}>
+      <SearchOverlayPanel onClick={(e) => e.stopPropagation()}>
         <SearchOverlayHeader>
           <SearchOverlayTitle>Search Messages</SearchOverlayTitle>
           <SearchOverlayActions>

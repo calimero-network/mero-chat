@@ -338,6 +338,8 @@ const StartDMPopup = memo(function StartDMPopup({
             setIsRefreshing(true);
             void Promise.resolve(onOpen()).finally(() => setIsRefreshing(false));
           }
+        } else if (!isProcessing && !open) {
+          setIsOpen(false);
         }
       }}
       isChild={true}

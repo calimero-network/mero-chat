@@ -69,20 +69,18 @@ const DMHeader = memo(function DMHeader({
   const canShowCreate =
     !resolved || permissions.isAdmin || permissions.canCreateSubgroup;
 
-  // Strip out members you already have a DM with so they don't even appear
-  // in the suggestion dropdown — prevents duplicate DMs at the source.
-  // Use namespaceMemberIdentity (from the DM alias) because dm.otherIdentity
-  // gets overwritten by the context executor key when get_profiles succeeds,
-  // making it a different format from the namespace identity keys in availableMembers.
   const filteredMembers = useMemo(() => {
     const existingDmIdentities = new Set(
       privateDMs
         .map((dm) => dm.namespaceMemberIdentity || dm.otherIdentity)
         .filter(Boolean),
     );
+    const existingDmUsernames = new Set(
+      privateDMs.map((dm) => dm.otherUsername).filter(Boolean),
+    );
     const filtered = new Map<string, string>();
     for (const [identity, label] of availableMembers) {
-      if (!existingDmIdentities.has(identity)) {
+      if (!existingDmIdentities.has(identity) && !existingDmUsernames.has(label)) {
         filtered.set(identity, label);
       }
     }
@@ -97,13 +95,17 @@ const DMHeader = memo(function DMHeader({
       if (!isMember) {
         return {
           isValid: false,
-          error: "Cannot create DM: the user is not in the workspace",
+          error: "User not found — they may not be in the workspace or a DM already exists",
         };
       }
-      // Belt-and-suspenders check — filteredMembers already hides existing DM
-      // contacts, but guard here too in case of a race between DM creation and
-      // the next filteredMembers recompute.
-      if (privateDMs.some((dm) => (dm.namespaceMemberIdentity || dm.otherIdentity) === identity)) {
+      // Belt-and-suspenders: filteredMembers already hides existing DM contacts,
+      // but guard here too for races. Check by both identity key and username
+      // since namespaceMemberIdentity can be empty when alias parsing fails.
+      const username = availableMembers.get(identity) || "";
+      if (privateDMs.some((dm) =>
+        (dm.namespaceMemberIdentity || dm.otherIdentity) === identity ||
+        (username && dm.otherUsername && dm.otherUsername === username)
+      )) {
         return {
           isValid: false,
           error: "A DM with this user already exists",

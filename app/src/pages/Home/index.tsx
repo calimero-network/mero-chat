@@ -930,20 +930,21 @@ export default function Home({ isConfigSet }: { isConfigSet: boolean }) {
         };
       }
 
-      // Dedup: fetch the current DM list and match by namespace member identity.
-      // namespaceMemberIdentity is parsed from the context's DM alias (set at
-      // creation time) — same namespace key space as otherIdentity here.
-      // We avoid scanning subgroup members because that matches any 2-member
-      // subgroup (e.g. a restricted channel), causing false positives.
+      const otherUsername = dmMembers.get(otherIdentity) || chatMembers.get(otherIdentity) || "";
+
+      // Dedup: check by identity key AND by username — namespaceMemberIdentity
+      // can be empty when the server doesn't echo the alias back on context
+      // entries, so the username from get_info's description is a second line
+      // of defence.
       const freshDms = await fetchDmsWithGroup();
       const existingDm = (freshDms ?? []).find(
-        (dm) => dm.namespaceMemberIdentity === otherIdentity,
+        (dm) =>
+          dm.namespaceMemberIdentity === otherIdentity ||
+          (otherUsername && dm.otherUsername && dm.otherUsername === otherUsername),
       );
       if (existingDm?.contextId) {
         return { data: existingDm.contextId, error: "" };
       }
-
-      const otherUsername = dmMembers.get(otherIdentity) || chatMembers.get(otherIdentity) || "";
       const myUsername = getIdentityDisplayName(myIdentity) || getMessengerDisplayName();
 
       // 1-group-per-context model: DM = a new restricted subgroup under the
