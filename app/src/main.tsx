@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import "./index.css";
 import App from "./App.tsx";
 import { BrowserRouter } from "react-router-dom";
+import bs58 from "bs58";
 import { decodeInvitationPayload } from "./utils/invitation.ts";
 import {
   MeroProvider,
