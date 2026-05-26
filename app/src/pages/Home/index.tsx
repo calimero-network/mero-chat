@@ -494,9 +494,15 @@ export default function Home({ isConfigSet }: { isConfigSet: boolean }) {
 
   // Called when the New DM popup opens — refresh both the member list and the
   // DM list so the popup's dropdown excludes contacts who already have a DM.
+  // Bypasses the debounce so isRefreshing stays true until data actually arrives
+  // (debouncedFetchGroupMembers resolves immediately, causing the spinner to
+  // disappear 3 s before members load — making the first open look empty).
   const onFetchDmMembersForPopup = useCallback(async () => {
-    await Promise.all([debouncedFetchGroupMembers(), fetchDmsWithGroup()]);
-  }, [debouncedFetchGroupMembers, fetchDmsWithGroup]);
+    const groupId = getGroupId();
+    const fetches: Promise<unknown>[] = [fetchDmsWithGroup()];
+    if (groupId) fetches.push(fetchGroupMembersRef.current(groupId));
+    await Promise.all(fetches);
+  }, [fetchDmsWithGroup]);
 
   const mainMessagesRef = useRef(mainMessages);
   const threadMessagesRef = useRef(threadMessages);
