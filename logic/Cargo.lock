@@ -149,9 +149,9 @@ checksum = "1e748733b7cbc798e1434b6ac524f0c1ff2ab456fe201501e6497c8417a4fc33"
 
 [[package]]
 name = "calimero-prelude"
-version = "0.10.1-rc.45"
+version = "0.10.1-rc.46"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "21e84ad43e305b55674159a001b169df89869f40ec120aec383ac91aacfc1507"
+checksum = "a8389ff3c097152066a4f349e1f725ba73a7ad42793ea5122074eaa068b6bd23"
 dependencies = [
  "borsh 1.6.1",
  "calimero-primitives",
@@ -161,9 +161,9 @@ dependencies = [
 
 [[package]]
 name = "calimero-primitives"
-version = "0.10.1-rc.45"
+version = "0.10.1-rc.46"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "28676e1bf072ffe73449d25b107ff2b2399f780168f75058b412006da3bcf52d"
+checksum = "a82c35f2ce00a181721505618e1803ce321d5530ed00a31aefaea19de5ba0dfc"
 dependencies = [
  "borsh 1.6.1",
  "bs58",
@@ -180,9 +180,9 @@ dependencies = [
 
 [[package]]
 name = "calimero-sdk"
-version = "0.10.1-rc.45"
+version = "0.10.1-rc.46"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c3c58efdebfc300ee77c43c0b2519e67412aa408b2d1e7949fed659e67cbd85f"
+checksum = "e1503c8ae9007e33de6ff5b1fb68b5c0189d5923db53c113d4628910e063b826"
 dependencies = [
  "borsh 1.6.1",
  "calimero-prelude",
@@ -197,9 +197,9 @@ dependencies = [
 
 [[package]]
 name = "calimero-sdk-macros"
-version = "0.10.1-rc.45"
+version = "0.10.1-rc.46"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "74d5f97411e7bfcdb896655e811aba1d9720fd02c657b0842b901e632c6dff5e"
+checksum = "a0728dda257233b4aa7b0efef765503102d4e4129904f66d4accce0697e8c0a9"
 dependencies = [
  "prettyplease",
  "proc-macro2",
@@ -211,9 +211,9 @@ dependencies = [
 
 [[package]]
 name = "calimero-storage"
-version = "0.10.1-rc.45"
+version = "0.10.1-rc.46"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ea4385092e84cdd0aa72251f352ce09d0605eb9a3c7f0a90cc4450cd0a63d599"
+checksum = "8abce61eca86439c16ab2266d051c71ec019e46a4220be407bfbeddcce5fae27"
 dependencies = [
  "borsh 1.6.1",
  "calimero-prelude",
@@ -234,9 +234,9 @@ dependencies = [
 
 [[package]]
 name = "calimero-storage-macros"
-version = "0.10.1-rc.45"
+version = "0.10.1-rc.46"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a1e13adf561a144c5f8286ef622e80adb30e0a8c6d4e21544e752bf1c114e4ba"
+checksum = "0071030df1a0b69fdc6208d774b107d7ab1a784c70bd31fac96ed30b204048d7"
 dependencies = [
  "quote",
  "syn 2.0.117",
@@ -244,18 +244,18 @@ dependencies = [
 
 [[package]]
 name = "calimero-sys"
-version = "0.10.1-rc.45"
+version = "0.10.1-rc.46"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "896af6e76a8074c23cadf96759d75c39520977f34be85111aa44ab0b87ddb3d4"
+checksum = "641bda07c2981d5a7414487840f1e24e6f3d06c9b7e47ef4247d388e27ee2bb2"
 dependencies = [
  "cfg-if",
 ]
 
 [[package]]
 name = "calimero-wasm-abi"
-version = "0.10.1-rc.45"
+version = "0.10.1-rc.46"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "493de5f507d7e99c6ed41583dad2d4fcc62e287c0c4395fd1b1c3d5a7bec709b"
+checksum = "78d3bbf74ddc5f678dae6da22e40c58c0a088d08c84322ceb9920f66d6c1834e"
 dependencies = [
  "proc-macro2",
  "serde",
@@ -399,9 +399,9 @@ dependencies = [
 
 [[package]]
 name = "displaydoc"
-version = "0.2.5"
+version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "97369cbbc041bc366949bc74d34658d6cda5621039731c6310521892a3a20ae0"
+checksum = "1ac70aa55017e108007fbaf5aa0f54b021c98f92ff8af59d42eda9da96e3dd4f"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -665,9 +665,9 @@ checksum = "68ab91017fe16c622486840e4c83c9a37afeff978bd239b5293d61ece587de66"
 
 [[package]]
 name = "libp2p-identity"
-version = "0.2.13"
+version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f0c7892c221730ba55f7196e98b0b8ba5e04b4155651736036628e9f73ed6fc3"
+checksum = "9525f3831544f7ae497bde79adf114ef127b0fbbb97edbbf692a80408636421c"
 dependencies = [
  "bs58",
  "hkdf",
@@ -696,9 +696,9 @@ dependencies = [
 
 [[package]]
 name = "memchr"
-version = "2.8.0"
+version = "2.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f8ca58f447f06ed17d5fc4043ce1b10dd205e060fb3ce5b979b8ed8e59ff3f79"
+checksum = "6b947ae49db0d222b1dbc6b113ce7248a3fc3a6ca21b696717bfc000ba4484d8"
 
 [[package]]
 name = "multiaddr"
@@ -909,9 +909,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.149"
+version = "1.0.150"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "83fc039473c5595ace860d8c4fafa220ff474b3fc6bfdb4293327f1a37e94d86"
+checksum = "e8014e44b4736ed0538adeecded0fce2a272f22dc9578a7eb6b2d9993c74cfb9"
 dependencies = [
  "itoa",
  "memchr",
@@ -1092,9 +1092,9 @@ dependencies = [
 
 [[package]]
 name = "toml_edit"
-version = "0.25.11+spec-1.1.0"
+version = "0.25.12+spec-1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b59c4d22ed448339746c59b905d24568fcbb3ab65a500494f7b8c3e97739f2b"
+checksum = "d2153edc6955a6c354fad8f5efd38b6a8769bdccf9fe50f8e1329f81b0baa5d7"
 dependencies = [
  "indexmap",
  "toml_datetime",
@@ -1231,18 +1231,18 @@ dependencies = [
 
 [[package]]
 name = "zerocopy"
-version = "0.8.48"
+version = "0.8.49"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eed437bf9d6692032087e337407a86f04cd8d6a16a37199ed57949d415bd68e9"
+checksum = "bce33a6288fa3f072a8c2c7d0f2fdbb90e28298f0135c1f99b96c3db2efcc60b"
 dependencies = [
  "zerocopy-derive",
 ]
 
 [[package]]
 name = "zerocopy-derive"
-version = "0.8.48"
+version = "0.8.49"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "70e3cd084b1788766f53af483dd21f93881ff30d7320490ec3ef7526d203bad4"
+checksum = "8fd425244944f4ab65ccff928e7323354c5a018c75838362fdce749dfad2ee1e"
 dependencies = [
  "proc-macro2",
  "quote",
