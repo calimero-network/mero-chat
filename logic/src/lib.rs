@@ -13,6 +13,9 @@ use std::fmt::Write;
 
 id::define!(pub UserId<32, 44>);
 type MessageId = String;
+// Type alias prevents the #[app::state] macro from mis-identifying
+// UnorderedMap<MessageId, ThreadVec> as an AuthoredVector field.
+type ThreadVec = AuthoredVector<Message>;
 
 /// Build the storage key for a user's per-channel draft.
 /// Format: "<base58_user_id>:<channel_name>"
@@ -373,7 +376,7 @@ pub struct MeroChat {
     created_at: LwwRegister<u64>,
     creator: LwwRegister<String>,
     messages: AuthoredVector<Message>,
-    threads: UnorderedMap<MessageId, AuthoredVector<Message>>,
+    threads: UnorderedMap<MessageId, ThreadVec>,
     reactions: UnorderedMap<MessageId, UnorderedMap<String, UnorderedSet<String>>>,
     profiles: AuthoredMap<UserId, StoredProfile>,
     /// Per-context moderation roles. Missing entry = Role::User (default).
@@ -894,12 +897,9 @@ impl MeroChat {
         };
 
         if let Some(parent_id) = parent_message {
-            let mut thread_messages = match self.threads.get(&parent_id) {
-                Ok(Some(messages)) => messages,
-                _ => AuthoredVector::new(),
-            };
-            let _ = thread_messages.push(msg.clone());
-            let _ = self.threads.insert(parent_id, thread_messages);
+            let mut entry = self.threads.entry(parent_id)?.or_insert(AuthoredVector::new())?;
+            let _ = entry.push(msg.clone());
+            drop(entry);
 
             app::emit!(Event::MessageSentThread(MessageSentEvent {
                 message_id: message_id.clone(),
@@ -1133,26 +1133,18 @@ impl MeroChat {
         add: bool,
     ) -> app::Result<String> {
         self.require_not_banned()?;
-        let mut reactions = match self.reactions.get(&message_id) {
-            Ok(Some(reactions)) => reactions,
-            _ => UnorderedMap::new(),
-        };
-
-        let mut emoji_reactions = match reactions.get(&emoji) {
-            Ok(Some(users)) => users,
-            _ => UnorderedSet::new(),
-        };
-
-        if add {
-            let _ = emoji_reactions.insert(user);
-        } else {
-            let _ = emoji_reactions.remove(&user);
-        }
-
-        let _ = reactions.insert(emoji, emoji_reactions);
-        let _ = self.reactions.insert(message_id.clone(), reactions);
-
         let action = if add { "added" } else { "removed" };
+
+        let mut reactions_entry = self.reactions.entry(message_id.clone())?.or_insert(UnorderedMap::new())?;
+        let mut emoji_entry = reactions_entry.entry(emoji)?.or_insert(UnorderedSet::new())?;
+        if add {
+            let _ = emoji_entry.insert(user);
+        } else {
+            let _ = emoji_entry.remove(&user);
+        }
+        drop(emoji_entry);
+        drop(reactions_entry);
+
         app::emit!(Event::ReactionUpdated(message_id.to_string()));
         Ok(format!("Reaction {} successfully", action))
     }
@@ -1168,20 +1160,17 @@ impl MeroChat {
         let executor_id = Self::executor_id();
 
         if let Some(parent_message_id) = parent_id {
-            let mut thread_messages = match self.threads.get(&parent_message_id) {
-                Ok(Some(messages)) => messages,
-                _ => app::bail!("Thread not found"),
+            let Some(mut thread_entry) = self.threads.get_mut(&parent_message_id)? else {
+                app::bail!("Thread not found")
             };
-
             let updated = Self::find_and_edit(
-                &mut thread_messages,
+                &mut *thread_entry,
                 &message_id,
                 &new_message,
                 timestamp,
                 &executor_id,
             )?;
-
-            let _ = self.threads.insert(parent_message_id, thread_messages);
+            drop(thread_entry);
 
             app::emit!(Event::MessageSentThread(MessageSentEvent {
                 message_id: updated.id.get().clone(),
@@ -1249,15 +1238,14 @@ impl MeroChat {
         let actor_role = self.role_of(&executor_id);
 
         if let Some(parent_message_id) = parent_id {
-            let mut thread_messages = match self.threads.get(&parent_message_id) {
-                Ok(Some(messages)) => messages,
-                _ => app::bail!("Thread not found"),
+            let Some(mut thread_entry) = self.threads.get_mut(&parent_message_id)? else {
+                app::bail!("Thread not found")
             };
+            Self::find_and_delete(&mut *thread_entry, &message_id, &executor_id, actor_role)?;
+            drop(thread_entry);
 
-            Self::find_and_delete(&mut thread_messages, &message_id, &executor_id, actor_role)?;
             let _ = self.deleted_messages.insert(message_id.clone());
             let _ = self.reactions.remove(&message_id);
-            let _ = self.threads.insert(parent_message_id, thread_messages);
 
             app::emit!(Event::MessageSentThread(MessageSentEvent {
                 message_id: message_id.clone(),
@@ -1418,7 +1406,8 @@ mod tests {
 
     #[test]
     fn draft_key_separator_is_colon() {
-        let parts: Vec<&str> = draft_key("abc", "my-channel").splitn(2, ':').collect();
+        let key = draft_key("abc", "my-channel");
+        let parts: Vec<&str> = key.splitn(2, ':').collect();
         assert_eq!(parts, ["abc", "my-channel"]);
     }
 
@@ -1445,7 +1434,8 @@ mod tests {
 
     #[test]
     fn draft_key_channel_name_with_colon_is_preserved() {
-        let parts: Vec<&str> = draft_key("user123", "chan:with:colons").splitn(2, ':').collect();
+        let key = draft_key("user123", "chan:with:colons");
+        let parts: Vec<&str> = key.splitn(2, ':').collect();
         assert_eq!(parts[1], "chan:with:colons");
     }
 
