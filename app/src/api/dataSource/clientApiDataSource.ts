@@ -1174,7 +1174,7 @@ export class ClientApiDataSource implements ClientApi {
     }
   }
 
-  async readMessage(props: ReadMessageProps): ApiResponse<string> {
+  async readMessage(_props: ReadMessageProps): ApiResponse<string> {
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const response = await getJsonRpcClient().execute<any, string>(
