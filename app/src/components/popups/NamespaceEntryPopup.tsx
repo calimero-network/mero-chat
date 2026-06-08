@@ -6,7 +6,7 @@ import { getNodeUrl } from "@calimero-network/mero-react";
 import { getAuthConfig } from "../../api/meroJsClient";
 import axios from "axios";
 import { GroupApiDataSource } from "../../api/dataSource/groupApiDataSource";
-import { NodeApiDataSource } from "../../api/dataSource/nodeApiDataSource";
+import { ContextApiDataSource } from "../../api/dataSource/nodeApiDataSource";
 import { ClientApiDataSource } from "../../api/dataSource/clientApiDataSource";
 import type { GroupSummary } from "../../api/groupApi";
 import {
@@ -622,7 +622,7 @@ export default function NamespaceEntryPopup({ isAuthenticated, isConfigSet, onLo
       // Goes through createGroupContext so `initializationParams` (required by core)
       // is byte-encoded with the curb `init` shape — a raw POST omitting it is rejected.
       try {
-        const ctxRes = await new NodeApiDataSource().createGroupContext({
+        const ctxRes = await new ContextApiDataSource().createGroupContext({
           applicationId: appId,
           protocol: "near",
           groupId,
