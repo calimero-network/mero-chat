@@ -804,33 +804,42 @@ impl MeroChat {
         }
 
         let pk = Self::to_pk(&target);
-        // Apply the target role, keeping the three sources mutually exclusive.
-        // Only strip a positive grant the target actually holds — calling
-        // `revoke`/`revoke_admin` for an absent role would needlessly trip the
-        // admin-only guard on a moderator's ban/unban path.
+        let actor_is_admin = actor_role == Role::Admin;
+        // Strip grants based on the target's *actual* writer-set / registry
+        // membership, NOT the display role — `role_of` reports `Banned` whenever
+        // the ban flag is set, which would otherwise mask (and leave behind) an
+        // underlying admin/mod grant if the ban map and `AccessControl` diverged
+        // across a merge. Only an admin may revoke; a moderator's sole permitted
+        // transition is User<->Banned on a plain User, which holds no grants.
+        let has_mod   = self.roles.has_role(ROLE_MOD, &pk).unwrap_or(false);
+        let has_admin = self.roles.is_admin(&pk);
         match role {
             Role::Admin => {
-                if target_role == Role::Mod { self.revoke_mod(&pk)?; }
+                if has_mod { self.revoke_mod(&pk)?; }
                 self.set_banned(&target, false);
                 self.roles
                     .grant_admin(pk)
                     .map_err(|e| app::err!("grant admin failed: {e}"))?;
             }
             Role::Mod => {
-                if target_role == Role::Admin { self.revoke_admin_member(&pk)?; }
+                if has_admin { self.revoke_admin_member(&pk)?; }
                 self.set_banned(&target, false);
                 self.roles
                     .grant(ROLE_MOD, pk)
                     .map_err(|e| app::err!("grant mod failed: {e}"))?;
             }
             Role::Banned => {
-                if target_role == Role::Mod   { self.revoke_mod(&pk)?; }
-                if target_role == Role::Admin { self.revoke_admin_member(&pk)?; }
+                if actor_is_admin {
+                    if has_mod   { self.revoke_mod(&pk)?; }
+                    if has_admin { self.revoke_admin_member(&pk)?; }
+                }
                 self.set_banned(&target, true);
             }
             Role::User => {
-                if target_role == Role::Mod   { self.revoke_mod(&pk)?; }
-                if target_role == Role::Admin { self.revoke_admin_member(&pk)?; }
+                if actor_is_admin {
+                    if has_mod   { self.revoke_mod(&pk)?; }
+                    if has_admin { self.revoke_admin_member(&pk)?; }
+                }
                 self.set_banned(&target, false);
             }
         }
@@ -1480,6 +1489,21 @@ mod tests {
         let mut app = new_chat();
         let modr = UserId::new(MODR);
         app.call(|s| s.set_member_role(modr, Role::Mod)).unwrap();
+        app.call(|s| s.set_member_role(modr, Role::User)).unwrap();
+        assert_eq!(app.view(|s| s.get_member_role(modr)), Role::User);
+    }
+
+    #[test]
+    fn banning_then_clearing_does_not_leave_stale_grants() {
+        // Banning a mod and later assigning User/Mod must clear the underlying
+        // AccessControl grant rather than rely on the (ban-masked) display role,
+        // so role_of always matches the requested role.
+        let mut app = new_chat();
+        let modr = UserId::new(MODR);
+        app.call(|s| s.set_member_role(modr, Role::Mod)).unwrap();
+        app.call(|s| s.set_member_role(modr, Role::Banned)).unwrap();
+        assert_eq!(app.view(|s| s.get_member_role(modr)), Role::Banned);
+        // Underlying mod grant must already be cleared by the ban.
         app.call(|s| s.set_member_role(modr, Role::User)).unwrap();
         assert_eq!(app.view(|s| s.get_member_role(modr)), Role::User);
     }
