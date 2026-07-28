@@ -32,10 +32,17 @@ jobs:
     runs-on: ubuntu-latest
     # Skip on draft PRs and fork PRs (forks don't get repo secrets).
     # Maintainers can review fork PRs manually via workflow_dispatch.
+    #
+    # Skip Dependabot too: its `pull_request` runs get no repo/org secrets, so
+    # ANTHROPIC_API_KEY is empty and the reviewer dies on start — and its
+    # GITHUB_TOKEN is read-only regardless of the `permissions` block above, so
+    # it could not post the review anyway. Review a bump by hand via
+    # workflow_dispatch if one ever warrants it.
     if: >-
       (github.event_name == 'workflow_dispatch') ||
       (github.event.pull_request.draft == false &&
-       github.event.pull_request.head.repo.full_name == github.repository)
+       github.event.pull_request.head.repo.full_name == github.repository &&
+       github.event.pull_request.user.login != 'dependabot[bot]')
 
     permissions:
       contents: read
