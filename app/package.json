@@ -28,7 +28,7 @@
     "test:sse": "vitest run src/hooks/useSseSubscription.test.ts && playwright test --project=sse"
   },
   "dependencies": {
-    "@braintree/sanitize-url": "^7.1.1",
+    "@braintree/sanitize-url": "^7.1.2",
     "@calimero-network/mero-js": "^7.0.2",
     "@calimero-network/mero-react": "^4.4.1",
     "@calimero-network/mero-ui": "1.4.0",
