@@ -97,9 +97,23 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fc652a48c352aef3ea3aed32080501cf3ef6ed5da78602a020c991775b0aff04"
 
 [[package]]
+name = "calimero-account"
+version = "0.0.0"
+source = "git+https://github.com/calimero-network/core.git?branch=master#e34a72556a1fc821ab5a790f4cf1b6d586d07cf6"
+dependencies = [
+ "borsh",
+ "calimero-primitives",
+ "calimero-wasm-abi",
+ "hex",
+ "serde",
+ "sha2",
+ "thiserror 1.0.69",
+]
+
+[[package]]
 name = "calimero-prelude"
 version = "0.0.0"
-source = "git+https://github.com/calimero-network/core.git?branch=master#ce46403516f6df7458dad40abb860ac5d270bb8e"
+source = "git+https://github.com/calimero-network/core.git?branch=master#e34a72556a1fc821ab5a790f4cf1b6d586d07cf6"
 dependencies = [
  "borsh",
  "calimero-primitives",
@@ -110,10 +124,11 @@ dependencies = [
 [[package]]
 name = "calimero-primitives"
 version = "0.0.0"
-source = "git+https://github.com/calimero-network/core.git?branch=master#ce46403516f6df7458dad40abb860ac5d270bb8e"
+source = "git+https://github.com/calimero-network/core.git?branch=master#e34a72556a1fc821ab5a790f4cf1b6d586d07cf6"
 dependencies = [
  "borsh",
  "bs58",
+ "calimero-wasm-abi",
  "ed25519-dalek",
  "eyre",
  "hex",
@@ -129,9 +144,10 @@ dependencies = [
 [[package]]
 name = "calimero-sdk"
 version = "0.0.0"
-source = "git+https://github.com/calimero-network/core.git?branch=master#ce46403516f6df7458dad40abb860ac5d270bb8e"
+source = "git+https://github.com/calimero-network/core.git?branch=master#e34a72556a1fc821ab5a790f4cf1b6d586d07cf6"
 dependencies = [
  "borsh",
+ "calimero-account",
  "calimero-prelude",
  "calimero-primitives",
  "calimero-sdk-macros",
@@ -145,7 +161,7 @@ dependencies = [
 [[package]]
 name = "calimero-sdk-macros"
 version = "0.0.0"
-source = "git+https://github.com/calimero-network/core.git?branch=master#ce46403516f6df7458dad40abb860ac5d270bb8e"
+source = "git+https://github.com/calimero-network/core.git?branch=master#e34a72556a1fc821ab5a790f4cf1b6d586d07cf6"
 dependencies = [
  "prettyplease",
  "proc-macro2",
@@ -158,13 +174,15 @@ dependencies = [
 [[package]]
 name = "calimero-storage"
 version = "0.0.0"
-source = "git+https://github.com/calimero-network/core.git?branch=master#ce46403516f6df7458dad40abb860ac5d270bb8e"
+source = "git+https://github.com/calimero-network/core.git?branch=master#e34a72556a1fc821ab5a790f4cf1b6d586d07cf6"
 dependencies = [
  "borsh",
+ "calimero-account",
  "calimero-prelude",
  "calimero-primitives",
  "calimero-sdk",
  "calimero-storage-macros",
+ "calimero-wasm-abi",
  "ed25519-dalek",
  "eyre",
  "fixedstr",
@@ -180,7 +198,7 @@ dependencies = [
 [[package]]
 name = "calimero-storage-macros"
 version = "0.0.0"
-source = "git+https://github.com/calimero-network/core.git?branch=master#ce46403516f6df7458dad40abb860ac5d270bb8e"
+source = "git+https://github.com/calimero-network/core.git?branch=master#e34a72556a1fc821ab5a790f4cf1b6d586d07cf6"
 dependencies = [
  "quote",
  "syn",
@@ -189,7 +207,7 @@ dependencies = [
 [[package]]
 name = "calimero-sys"
 version = "0.0.0"
-source = "git+https://github.com/calimero-network/core.git?branch=master#ce46403516f6df7458dad40abb860ac5d270bb8e"
+source = "git+https://github.com/calimero-network/core.git?branch=master#e34a72556a1fc821ab5a790f4cf1b6d586d07cf6"
 dependencies = [
  "cfg-if",
 ]
@@ -197,12 +215,11 @@ dependencies = [
 [[package]]
 name = "calimero-wasm-abi"
 version = "0.0.0"
-source = "git+https://github.com/calimero-network/core.git?branch=master#ce46403516f6df7458dad40abb860ac5d270bb8e"
+source = "git+https://github.com/calimero-network/core.git?branch=master#e34a72556a1fc821ab5a790f4cf1b6d586d07cf6"
 dependencies = [
- "proc-macro2",
+ "indexmap",
  "serde",
  "serde_json",
- "syn",
  "thiserror 1.0.69",
  "wasmparser",
 ]
