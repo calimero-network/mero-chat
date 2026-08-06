@@ -16,10 +16,9 @@ A chat application built on the Calimero Network, enabling private, decentralize
 ### Build and Run
 
 ```bash
-# Build the logic (Rust WASM)
+# Build the logic (Rust WASM + embedded ABI)
 cd logic
-chmod +x ./build.sh
-./build.sh
+cargo mero build
 
 # Start the app
 cd ../app
@@ -36,11 +35,14 @@ cd logic
 ```
 
 ```bash title="Terminal"
-chmod +x ./build.sh
+cargo mero build
 ```
 
+`cargo mero` is the Calimero app toolchain — install the release matching the
+`calimero-sdk` tag in `logic/Cargo.toml`:
+
 ```bash title="Terminal"
-./build.sh
+cargo install --git https://github.com/calimero-network/core --tag 0.11.0-rc.20 cargo-mero --locked
 ```
 
 ## App

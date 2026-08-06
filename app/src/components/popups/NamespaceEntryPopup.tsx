@@ -811,7 +811,7 @@ export default function NamespaceEntryPopup({ isAuthenticated, isConfigSet, onLo
             <Field>
               <Label>Invitation</Label>
               <Textarea
-                placeholder={"calimero://curb/join?invitation=… or paste the raw encoded code"}
+                placeholder={"https://links.calimero.network/com.calimero.curb/join?invitation=… or paste the raw encoded code"}
                 value={joinInviteInput}
                 onChange={(e) => { setJoinInviteInput(e.target.value); setError(""); }}
                 autoFocus
