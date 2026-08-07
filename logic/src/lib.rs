@@ -1,6 +1,7 @@
 use calimero_sdk::borsh::{BorshDeserialize, BorshSerialize};
 use calimero_sdk::serde::{Deserialize, Serialize};
-use calimero_sdk::{app, env, BlobId, PublicKey};
+use calimero_sdk::abi::AbiType;
+use calimero_sdk::{app, env, AccountId, BlobId};
 use calimero_storage::collections::crdt_meta::MergeError;
 use calimero_storage::collections::rekey::RekeyTarget;
 use calimero_storage::collections::{
@@ -24,14 +25,14 @@ fn draft_key(user_base58: &str, channel: &str) -> String {
     format!("{user_base58}:{channel}")
 }
 
-#[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Clone)]
+#[derive(AbiType, BorshDeserialize, BorshSerialize, Serialize, Deserialize, Clone)]
 #[serde(crate = "calimero_sdk::serde")]
 #[borsh(crate = "calimero_sdk::borsh")]
 pub struct MessageSentEvent {
     pub message_id: String,
 }
 
-#[derive(Debug, Clone, BorshDeserialize, BorshSerialize, Serialize, Deserialize)]
+#[derive(AbiType, Debug, Clone, BorshDeserialize, BorshSerialize, Serialize, Deserialize)]
 #[borsh(crate = "calimero_sdk::borsh")]
 #[serde(crate = "calimero_sdk::serde")]
 pub struct Attachment {
@@ -69,7 +70,7 @@ impl Attachment {
     }
 }
 
-#[derive(Debug, Clone, BorshDeserialize, BorshSerialize, Serialize, Deserialize)]
+#[derive(AbiType, Debug, Clone, BorshDeserialize, BorshSerialize, Serialize, Deserialize)]
 #[borsh(crate = "calimero_sdk::borsh")]
 #[serde(crate = "calimero_sdk::serde")]
 pub struct AttachmentPublic {
@@ -80,7 +81,7 @@ pub struct AttachmentPublic {
     pub uploaded_at: u64,
 }
 
-#[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Clone)]
+#[derive(AbiType, BorshDeserialize, BorshSerialize, Serialize, Deserialize, Clone)]
 #[borsh(crate = "calimero_sdk::borsh")]
 #[serde(crate = "calimero_sdk::serde")]
 pub struct AttachmentInput {
@@ -103,7 +104,7 @@ pub enum Event {
 }
 
 /// "channel" or "dm" — stored in app state so it's mutable (supports renames).
-#[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, PartialEq, Eq, Clone)]
+#[derive(AbiType, BorshDeserialize, BorshSerialize, Serialize, Deserialize, PartialEq, Eq, Clone)]
 #[serde(crate = "calimero_sdk::serde")]
 #[borsh(crate = "calimero_sdk::borsh")]
 pub enum ContextType {
@@ -120,7 +121,7 @@ pub enum ContextType {
 /// - `Mod`      can flip a User to Banned (and back)
 /// - `Admin`    can change anyone's role; creator starts here
 /// - `Banned`   cannot perform any state-mutating action
-#[derive(Debug, Clone, Copy, PartialEq, Eq,
+#[derive(AbiType, Debug, Clone, Copy, PartialEq, Eq,
     BorshDeserialize, BorshSerialize, Serialize, Deserialize)]
 #[borsh(crate = "calimero_sdk::borsh")]
 #[serde(crate = "calimero_sdk::serde")]
@@ -142,7 +143,7 @@ impl Default for Role {
 /// named role the registry stores.
 const ROLE_MOD: &str = "mod";
 
-#[derive(BorshDeserialize, BorshSerialize)]
+#[derive(AbiType, BorshDeserialize, BorshSerialize)]
 #[borsh(crate = "calimero_sdk::borsh")]
 pub struct Message {
     pub timestamp: LwwRegister<u64>,
@@ -331,7 +332,7 @@ impl Serialize for Message {
     }
 }
 
-#[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Clone)]
+#[derive(AbiType, BorshDeserialize, BorshSerialize, Serialize, Deserialize, Clone)]
 #[serde(crate = "calimero_sdk::serde")]
 #[borsh(crate = "calimero_sdk::borsh")]
 pub struct MessageWithReactions {
@@ -388,7 +389,7 @@ fn attachment_inputs_to_vector(
     Ok(vector)
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(AbiType, Serialize, Deserialize)]
 #[serde(crate = "calimero_sdk::serde")]
 pub struct FullMessageResponse {
     pub total_count: u32,
@@ -397,7 +398,7 @@ pub struct FullMessageResponse {
 }
 
 /// Per-context metadata returned by `get_info` / `get_channel_info`.
-#[derive(Serialize, Deserialize)]
+#[derive(AbiType, Serialize, Deserialize)]
 #[serde(crate = "calimero_sdk::serde")]
 pub struct ContextInfo {
     pub name: String,
@@ -408,7 +409,7 @@ pub struct ContextInfo {
 }
 
 /// Per-context user profile returned by `get_profiles`.
-#[derive(Serialize, Deserialize)]
+#[derive(AbiType, Serialize, Deserialize)]
 #[serde(crate = "calimero_sdk::serde")]
 pub struct UserProfile {
     pub identity: UserId,
@@ -417,7 +418,7 @@ pub struct UserProfile {
 }
 
 /// Per-context profile stored in CRDT state.
-#[derive(BorshDeserialize, BorshSerialize)]
+#[derive(AbiType, BorshDeserialize, BorshSerialize)]
 #[borsh(crate = "calimero_sdk::borsh")]
 pub struct StoredProfile {
     pub username: LwwRegister<String>,
@@ -491,6 +492,17 @@ pub struct MeroChat {
     /// Per-user last heartbeat timestamp (ms since epoch). Silent CRDT write —
     /// no event emitted, but gossips to all nodes so presence is cross-node.
     heartbeats: UnorderedMap<UserId, LwwRegister<u64>>,
+    /// device key → the account that device speaks for, self-registered on every
+    /// write a member makes.
+    ///
+    /// `AccessControl` is keyed by `AccountId` since core rc.20 (one person,
+    /// many devices — the gate is the person), while everything a client sees
+    /// and compares against group membership is still a device key. Nothing on
+    /// the wire maps one to the other, and a device can only ever assert its
+    /// OWN pairing (`env::device_id()` + `env::account_id()` both come from the
+    /// host, so a member cannot claim someone else's account), which is why this
+    /// is a self-registration and not an admin-maintained table.
+    accounts: UnorderedMap<UserId, LwwRegister<AccountId>>,
 }
 
 #[app::logic]
@@ -509,7 +521,22 @@ impl MeroChat {
 
         // The context creator is the sole initial admin (the writer set). Other
         // admins/mods are granted at runtime by an existing admin.
-        let roles = AccessControl::new(env::executor_id().into());
+        // The writer set holds the caller's ACCOUNT — the only thing the guarded
+        // registry authorizes against since rc.20. Spelled out with
+        // `env::account_id()` rather than `AccessControl::new_admin_caller()`:
+        // that helper reads the STORAGE layer's account, which under TestHost is
+        // a second mock that only `call`/`view` align with the SDK one, so an
+        // init-time seed would land under a different account than every later
+        // call presents. Identical at runtime, unambiguous under test.
+        let roles = AccessControl::new(AccountId::from(env::account_id()));
+
+        // The creator's own device→account pairing, so a second admin can be
+        // granted before the creator has written anything else.
+        let mut accounts = UnorderedMap::new();
+        let _ = accounts.insert(
+            Self::executor_id(),
+            LwwRegister::new(AccountId::from(env::account_id())),
+        );
 
         // Pre-seed the creator's profile so get_profiles returns their name
         // immediately after context state gossip, without waiting for an
@@ -517,7 +544,7 @@ impl MeroChat {
         let mut profiles = AuthoredMap::new();
         if !creator_username.trim().is_empty() {
             let _ = profiles.insert(
-                UserId::new(env::executor_id()),
+                UserId::new(env::device_id()),
                 StoredProfile {
                     username: LwwRegister::new(creator_username),
                     avatar: None,
@@ -541,6 +568,7 @@ impl MeroChat {
             deleted_messages: UnorderedSet::new(),
             drafts: UnorderedMap::new(),
             heartbeats: UnorderedMap::new(),
+            accounts,
         }
     }
 
@@ -708,6 +736,7 @@ impl MeroChat {
         }
 
         let executor_id = Self::executor_id();
+        self.remember_account();
 
         // Announce avatar blob to this context so it replicates to other nodes.
         let avatar_register: Option<LwwRegister<String>> = if let Some(ref blob_id_str) = avatar {
@@ -799,6 +828,9 @@ impl MeroChat {
     /// trigger SSE noise on subscribers. Banned members are excluded.
     pub fn heartbeat(&mut self) -> app::Result<()> {
         self.require_not_banned()?;
+        // Every client heartbeats, so this is where a member's device→account
+        // pairing reliably becomes known to the rest of the context.
+        self.remember_account();
         let me = Self::executor_id();
         let _ = self.heartbeats.insert(me, LwwRegister::new(env::time_now()));
         Ok(())
@@ -842,14 +874,19 @@ impl MeroChat {
                 if *flag.get() && !ids.contains(&id) { ids.push(id); }
             }
         }
-        for pk in self.roles.admins() {
-            let id = UserId::new(*pk);
-            if !ids.contains(&id) { ids.push(id); }
+        // The registry answers in accounts; the frontend speaks device keys.
+        // A granted account with no known device is skipped rather than
+        // rendered as an unresolvable id.
+        for account in self.roles.admins() {
+            for id in self.devices_of(&account) {
+                if !ids.contains(&id) { ids.push(id); }
+            }
         }
         if let Ok(mods) = self.roles.members_of(ROLE_MOD) {
-            for pk in mods {
-                let id = UserId::new(*pk);
-                if !ids.contains(&id) { ids.push(id); }
+            for account in mods {
+                for id in self.devices_of(&account) {
+                    if !ids.contains(&id) { ids.push(id); }
+                }
             }
         }
         ids.into_iter()
@@ -884,7 +921,10 @@ impl MeroChat {
             app::bail!("You don't have permission to change this member's role");
         }
 
-        let pk = Self::to_pk(&target);
+        // Grants are account-scoped. A ban needs no account (it is the app's own
+        // exclusion map), so only the AccessControl paths demand one — a member
+        // who has never written here has no known account yet.
+        let account = self.account_of(&target);
         let actor_is_admin = actor_role == Role::Admin;
         // Strip grants based on the target's *actual* writer-set / registry
         // membership, NOT the display role — `role_of` reports `Banned` whenever
@@ -892,34 +932,42 @@ impl MeroChat {
         // underlying admin/mod grant if the ban map and `AccessControl` diverged
         // across a merge. Only an admin may revoke; a moderator's sole permitted
         // transition is User<->Banned on a plain User, which holds no grants.
-        let has_mod   = self.roles.has_role(ROLE_MOD, &pk).unwrap_or(false);
-        let has_admin = self.roles.is_admin(&pk);
+        let has_mod = account
+            .map(|a| self.roles.has_role(ROLE_MOD, &a).unwrap_or(false))
+            .unwrap_or(false);
+        let has_admin = account.map(|a| self.roles.is_admin(&a)).unwrap_or(false);
         match role {
             Role::Admin => {
-                if has_mod { self.revoke_mod(&pk)?; }
+                let account = Self::require_account(account)?;
+                if has_mod { self.revoke_mod(&account)?; }
                 self.set_banned(&target, false);
                 self.roles
-                    .grant_admin(pk)
+                    .grant_admin(account)
                     .map_err(|e| app::err!("grant admin failed: {e}"))?;
             }
             Role::Mod => {
-                if has_admin { self.revoke_admin_member(&pk)?; }
+                let account = Self::require_account(account)?;
+                if has_admin { self.revoke_admin_member(&account)?; }
                 self.set_banned(&target, false);
                 self.roles
-                    .grant(ROLE_MOD, pk)
+                    .grant(ROLE_MOD, account)
                     .map_err(|e| app::err!("grant mod failed: {e}"))?;
             }
             Role::Banned => {
                 if actor_is_admin {
-                    if has_mod   { self.revoke_mod(&pk)?; }
-                    if has_admin { self.revoke_admin_member(&pk)?; }
+                    if let Some(account) = account {
+                        if has_mod   { self.revoke_mod(&account)?; }
+                        if has_admin { self.revoke_admin_member(&account)?; }
+                    }
                 }
                 self.set_banned(&target, true);
             }
             Role::User => {
                 if actor_is_admin {
-                    if has_mod   { self.revoke_mod(&pk)?; }
-                    if has_admin { self.revoke_admin_member(&pk)?; }
+                    if let Some(account) = account {
+                        if has_mod   { self.revoke_mod(&account)?; }
+                        if has_admin { self.revoke_admin_member(&account)?; }
+                    }
                 }
                 self.set_banned(&target, false);
             }
@@ -933,10 +981,13 @@ impl MeroChat {
         if self.is_banned(user) {
             return Role::Banned;
         }
-        let pk = Self::to_pk(user);
-        if self.roles.is_admin(&pk) {
+        // No known account = no grant can name them, so they hold no role.
+        let Some(account) = self.account_of(user) else {
+            return Role::User;
+        };
+        if self.roles.is_admin(&account) {
             Role::Admin
-        } else if self.roles.has_role(ROLE_MOD, &pk).unwrap_or(false) {
+        } else if self.roles.has_role(ROLE_MOD, &account).unwrap_or(false) {
             Role::Mod
         } else {
             Role::User
@@ -951,27 +1002,62 @@ impl MeroChat {
         let _ = self.banned.insert(*user, LwwRegister::new(banned));
     }
 
-    fn revoke_mod(&mut self, pk: &PublicKey) -> app::Result<()> {
+    fn revoke_mod(&mut self, account: &AccountId) -> app::Result<()> {
         self.roles
-            .revoke(ROLE_MOD, pk)
+            .revoke(ROLE_MOD, account)
             .map_err(|e| app::err!("revoke mod failed: {e}"))?;
         Ok(())
     }
 
-    fn revoke_admin_member(&mut self, pk: &PublicKey) -> app::Result<()> {
+    fn revoke_admin_member(&mut self, account: &AccountId) -> app::Result<()> {
         self.roles
-            .revoke_admin(pk)
+            .revoke_admin(account)
             .map_err(|e| app::err!("revoke admin failed: {e}"))?;
         Ok(())
     }
 
-    /// Map a curb `UserId` (32-byte key) to the storage-layer `PublicKey` the
-    /// access-control components key on.
-    fn to_pk(user: &UserId) -> PublicKey {
-        let slice: &[u8] = user.as_ref();
-        let mut arr = [0u8; 32];
-        arr.copy_from_slice(slice);
-        PublicKey::from(arr)
+    /// Record the caller's device→account pairing, so an admin can later name
+    /// this member in a grant. Cheap and idempotent: an unchanged pairing is
+    /// not rewritten, so the common path adds no CRDT delta.
+    fn remember_account(&mut self) {
+        let me = Self::executor_id();
+        let account = AccountId::from(env::account_id());
+        if matches!(self.accounts.get(&me), Ok(Some(known)) if *known.get() == account) {
+            return;
+        }
+        let _ = self.accounts.insert(me, LwwRegister::new(account));
+    }
+
+    /// The account a member's device speaks for, if that member has ever
+    /// written here.
+    fn account_of(&self, user: &UserId) -> Option<AccountId> {
+        match self.accounts.get(user) {
+            Ok(Some(reg)) => Some(*reg.get()),
+            _ => None,
+        }
+    }
+
+    /// Every known device of `account` — the reverse of [`Self::account_of`],
+    /// used to render account-keyed grants back as the device ids a client
+    /// recognises.
+    fn devices_of(&self, account: &AccountId) -> Vec<UserId> {
+        let Ok(entries) = self.accounts.entries() else {
+            return Vec::new();
+        };
+        entries
+            .filter(|(_, known)| known.get() == account)
+            .map(|(id, _)| id)
+            .collect()
+    }
+
+    fn require_account(account: Option<AccountId>) -> app::Result<AccountId> {
+        match account {
+            Some(account) => Ok(account),
+            None => app::bail!(
+                "That member hasn't opened this chat yet, so their account is unknown — \
+                 ask them to open it once, then set the role"
+            ),
+        }
     }
 
     fn require_not_banned(&self) -> app::Result<()> {
@@ -992,8 +1078,12 @@ impl MeroChat {
         }
     }
 
+    /// The caller's DEVICE key — the value the frontend compares against group
+    /// membership, and what `executor_id()` returned before rc.20 split the two.
+    /// Per-person gating goes through the account (see `account_of`); everything
+    /// else here stays device-keyed on purpose.
     fn executor_id() -> UserId {
-        UserId::new(env::executor_id())
+        UserId::new(env::device_id())
     }
 
     fn get_message_id(
@@ -1490,12 +1580,26 @@ mod tests {
     use calimero_sdk::testing::TestHost;
     use calimero_sdk::BlobId;
 
-    use super::{draft_key, ContextType, MeroChat, Role, UserId};
+    use super::{draft_key, AccountId, ContextType, MeroChat, Role, UserId};
 
     // ── AccessControl-backed roles (TestHost) ──────────────────────────────────
 
     const MODR: [u8; 32] = [0x22; 32];
     const USER: [u8; 32] = [0x33; 32];
+
+    // Roles are keyed by ACCOUNT since rc.20, and `call_as` deliberately keeps
+    // the caller's account (two devices of one person). A distinct person needs
+    // a distinct account, so each test peer gets one — reusing the device bytes
+    // keeps the pairing readable.
+    const MODR_ACCOUNT: [u8; 32] = [0xA2; 32];
+    const USER_ACCOUNT: [u8; 32] = [0xA3; 32];
+
+    /// Register a peer's device→account pairing the way the real app does: the
+    /// member opens the chat and heartbeats. Until then an admin cannot name
+    /// them in a grant, because nothing on the wire maps a device to an account.
+    fn announce(app: &mut TestHost<MeroChat>, account: [u8; 32], device: [u8; 32]) {
+        app.call_as_account(account, device, |s| s.heartbeat()).unwrap();
+    }
 
     fn new_chat() -> TestHost<MeroChat> {
         // init runs as the default test executor, who becomes the sole admin.
@@ -1527,8 +1631,10 @@ mod tests {
         // anyone) to Admin is refused by the fail-fast guard, and the
         // authoritative writer-set check rejects a forged grant delta at merge.
         let mut app = new_chat();
+        announce(&mut app, USER_ACCOUNT, USER);
+        announce(&mut app, MODR_ACCOUNT, MODR);
         let target = UserId::new(USER);
-        let denied = app.call_as(MODR, |s| s.set_member_role(target, Role::Admin));
+        let denied = app.call_as_account(MODR_ACCOUNT, MODR, |s| s.set_member_role(target, Role::Admin));
         assert!(denied.is_err());
         assert_eq!(app.view(|s| s.get_member_role(target)), Role::User);
     }
@@ -1536,6 +1642,8 @@ mod tests {
     #[test]
     fn admin_promotes_mod_then_mod_moderates_within_limits() {
         let mut app = new_chat();
+        announce(&mut app, MODR_ACCOUNT, MODR);
+        announce(&mut app, USER_ACCOUNT, USER);
         let modr = UserId::new(MODR);
         let user = UserId::new(USER);
 
@@ -1544,30 +1652,61 @@ mod tests {
         assert_eq!(app.view(|s| s.get_member_role(modr)), Role::Mod);
 
         // The moderator may ban a user (separate exclusion set, no admin grant).
-        app.call_as(MODR, |s| s.set_member_role(user, Role::Banned)).unwrap();
+        app.call_as_account(MODR_ACCOUNT, MODR, |s| s.set_member_role(user, Role::Banned)).unwrap();
         assert_eq!(app.view(|s| s.get_member_role(user)), Role::Banned);
 
         // …but may not escalate a user to Admin.
-        assert!(app.call_as(MODR, |s| s.set_member_role(user, Role::Admin)).is_err());
+        assert!(app
+            .call_as_account(MODR_ACCOUNT, MODR, |s| s.set_member_role(user, Role::Admin))
+            .is_err());
 
         // …and may unban (Banned → User).
-        app.call_as(MODR, |s| s.set_member_role(user, Role::User)).unwrap();
+        app.call_as_account(MODR_ACCOUNT, MODR, |s| s.set_member_role(user, Role::User)).unwrap();
         assert_eq!(app.view(|s| s.get_member_role(user)), Role::User);
     }
 
     #[test]
     fn banned_member_is_blocked_from_mutations() {
         let mut app = new_chat();
+        announce(&mut app, USER_ACCOUNT, USER);
         let user = UserId::new(USER);
         app.call(|s| s.set_member_role(user, Role::Banned)).unwrap();
         // A banned caller's state-mutating action is rejected by the ban gate.
-        let r = app.call_as(USER, |s| s.save_draft("general".to_owned(), "hi".to_owned()));
+        let r = app.call_as_account(USER_ACCOUNT, USER, |s| {
+            s.save_draft("general".to_owned(), "hi".to_owned())
+        });
         assert!(r.is_err());
+    }
+
+    #[test]
+    fn granting_a_member_who_never_wrote_is_refused() {
+        // Nothing on the wire maps a device key to an account, so a member the
+        // context has never heard from cannot be named in a grant. The error
+        // says what to do about it rather than failing as "no permission".
+        let mut app = new_chat();
+        let stranger = UserId::new(USER);
+        let err = format!("{:?}", app.call(|s| s.set_member_role(stranger, Role::Mod)).unwrap_err());
+        assert!(err.contains("hasn't opened this chat yet"), "unexpected error: {err}");
+        assert_eq!(app.view(|s| s.get_member_role(stranger)), Role::User);
+    }
+
+    #[test]
+    fn a_second_device_of_a_granted_account_holds_the_role() {
+        // The point of account-keyed roles: grant the person once and every
+        // device they own is covered, including one the context first sees later.
+        const MODR_LAPTOP: [u8; 32] = [0x24; 32];
+        let mut app = new_chat();
+        announce(&mut app, MODR_ACCOUNT, MODR);
+        app.call(|s| s.set_member_role(UserId::new(MODR), Role::Mod)).unwrap();
+
+        announce(&mut app, MODR_ACCOUNT, MODR_LAPTOP);
+        assert_eq!(app.view(|s| s.get_member_role(UserId::new(MODR_LAPTOP))), Role::Mod);
     }
 
     #[test]
     fn admin_demotes_mod_to_user() {
         let mut app = new_chat();
+        announce(&mut app, MODR_ACCOUNT, MODR);
         let modr = UserId::new(MODR);
         app.call(|s| s.set_member_role(modr, Role::Mod)).unwrap();
         app.call(|s| s.set_member_role(modr, Role::User)).unwrap();
@@ -1580,6 +1719,7 @@ mod tests {
         // AccessControl grant rather than rely on the (ban-masked) display role,
         // so role_of always matches the requested role.
         let mut app = new_chat();
+        announce(&mut app, MODR_ACCOUNT, MODR);
         let modr = UserId::new(MODR);
         app.call(|s| s.set_member_role(modr, Role::Mod)).unwrap();
         app.call(|s| s.set_member_role(modr, Role::Banned)).unwrap();

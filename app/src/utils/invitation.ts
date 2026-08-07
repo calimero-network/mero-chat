@@ -1,5 +1,6 @@
 import bs58 from "bs58";
 import { deflateSync, inflateSync } from "fflate";
+import { createLink } from "@calimero-network/mero-platform";
 import type { SignedGroupOpenInvitation } from "../api/groupApi";
 
 /**
@@ -201,8 +202,17 @@ export function clearInvitationFromStorage(): void {
   }
 }
 
-/** Deep link for Calimero Desktop App: calimero://curb/join?invitation={encoded} */
-export const CALIMERO_CURB_JOIN_DEEP_LINK = "calimero://curb/join";
+/**
+ * The app's deep-link slug. The desktop launcher resolves a link by
+ * `Application.package`, and links.calimero.network resolves the web frontend by
+ * asking the registry for that same package — so the slug IS the package id, not
+ * a friendly name. Keep it equal to `slug`/`package` in
+ * `logic/Cargo.toml`'s `[package.metadata.calimero]`.
+ */
+export const APP_SLUG = "com.calimero.curb";
+
+/** Deep link for Calimero Desktop: calimero://com.calimero.curb/join?invitation={encoded} */
+export const CALIMERO_CURB_JOIN_DEEP_LINK = `calimero://${APP_SLUG}/join`;
 
 export function generateInvitationDeepLink(invitationPayload: string): string {
   const encoded = encodeInvitationPayload(invitationPayload);
@@ -210,12 +220,20 @@ export function generateInvitationDeepLink(invitationPayload: string): string {
 }
 
 /**
- * Web invitation URL (https). Same behavior when opened: browser decodes param and app uses it.
+ * The canonical shareable invitation link (HTTPS), built by the platform SDK:
+ * `https://links.calimero.network/com.calimero.curb/join?invitation=…`.
+ *
+ * One link works everywhere: on a device with Calimero Desktop installed the OS
+ * hands it to the app, and otherwise the landing page resolves this package's
+ * published `links.frontend` from the registry and forwards the query untouched
+ * — which is why the bundle manifest has to carry both `slug` and `frontend`.
+ * Sharing `window.location.origin` instead (what this used to do) pinned the
+ * invite to whichever deployment the inviter happened to be on.
  */
 export function generateInvitationUrl(invitationPayload: string): string {
-  const base = typeof window !== "undefined" ? window.location.origin : "";
-  const encoded = encodeInvitationPayload(invitationPayload);
-  return `${base}/?invitation=${encoded}`;
+  return createLink(APP_SLUG, "join", {
+    invitation: encodeInvitationPayload(invitationPayload),
+  });
 }
 
 /**

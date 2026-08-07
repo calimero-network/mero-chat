@@ -18,6 +18,9 @@ importers:
       '@calimero-network/mero-js':
         specifier: ^7.0.2
         version: 7.0.2
+      '@calimero-network/mero-platform':
+        specifier: ^0.1.0
+        version: 0.1.0
       '@calimero-network/mero-react':
         specifier: ^4.4.1
         version: 4.4.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -114,6 +117,10 @@ importers:
       zustand:
         specifier: ^5.0.14
         version: 5.0.14(@types/react@19.2.17)(react@19.2.7)(use-sync-external-store@1.6.0(react@19.2.7))
+    optionalDependencies:
+      '@types/react':
+        specifier: 19.2.17
+        version: 19.2.17
     devDependencies:
       '@eslint/js':
         specifier: ^9.39.5
@@ -172,10 +179,6 @@ importers:
       workbox-window:
         specifier: ^7.4.1
         version: 7.4.1
-    optionalDependencies:
-      '@types/react':
-        specifier: 19.2.17
-        version: 19.2.17
 
 packages:
 
@@ -720,6 +723,9 @@ packages:
   '@calimero-network/mero-js@7.0.2':
     resolution: {integrity: sha512-znm5I5Sdw/2EiMjo+xnnp77JmyR66yB4vPbOqC0ci5kKQQfO4SJWYyBEW+0fcYrhhUKjOdDGAVscyf6LgQcH7A==}
     engines: {node: '>=18.0.0'}
+
+  '@calimero-network/mero-platform@0.1.0':
+    resolution: {integrity: sha512-ocEdeeou3GYdRlXxThuXtf4Klfi18g8Dpvl3urBGUgwHbhchMN/6KrGKr3jUj5XlcRnIPlvUmNEN1PoJ8oYp6w==}
 
   '@calimero-network/mero-react@4.4.1':
     resolution: {integrity: sha512-1UCXcxrB/WxHu4BcW3ZSekMcpd9j8RjY75TtRNhIjHcgZsBrlVorIBxulwHFcbOth8CiwjrKHJ4yxc8RkvdNDQ==}
@@ -5185,6 +5191,8 @@ snapshots:
       react: 19.2.7
 
   '@calimero-network/mero-js@7.0.2': {}
+
+  '@calimero-network/mero-platform@0.1.0': {}
 
   '@calimero-network/mero-react@4.4.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
     dependencies:

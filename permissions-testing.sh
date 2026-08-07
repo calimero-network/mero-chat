@@ -110,7 +110,7 @@ section "Prerequisites"
 for cmd in merod meroctl jq curl python3; do
   command -v "$cmd" &>/dev/null && ok "$cmd" || die "$cmd not in PATH"
 done
-[ -f "$WASM" ] || die "curb.wasm not found — run: cd logic && bash build.sh"
+[ -f "$WASM" ] || die "curb.wasm not found — run: cd logic && cargo mero build"
 ok "curb.wasm: $WASM"
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

@@ -122,6 +122,17 @@ impl<'de, const N: usize, const S: usize> Deserialize<'de> for Id<N, S> {
     }
 }
 
+/// An id crosses the JSON-RPC boundary as the base58 string `Serialize` writes,
+/// so the ABI must describe it as a string — not as the 32 raw bytes it is in
+/// borsh. Only the native build needs this: the ABI is emitted by the host-side
+/// `__calimero_abi()`, and `AbiType` does not exist on the wasm target.
+#[cfg(not(target_arch = "wasm32"))]
+impl<const N: usize, const S: usize> calimero_sdk::abi::AbiType for Id<N, S> {
+    fn type_ref(_reg: &mut calimero_sdk::abi::TypeRegistry) -> calimero_sdk::abi::TypeRef {
+        calimero_sdk::abi::TypeRef::Scalar(calimero_sdk::abi::ScalarType::String)
+    }
+}
+
 #[doc(hidden)]
 pub mod __private {
     pub use core::fmt;
@@ -214,6 +225,17 @@ macro_rules! define {
                     $crate::types::id::__private::FromStr::from_str(s),
                     Self::from_id
                 )
+            }
+        }
+
+        // Same string shape as the wrapped `Id` — see its `AbiType` impl.
+        #[cfg(not(target_arch = "wasm32"))]
+        impl ::calimero_sdk::abi::AbiType for $name {
+            fn type_ref(
+                reg: &mut ::calimero_sdk::abi::TypeRegistry,
+            ) -> ::calimero_sdk::abi::TypeRef {
+                <$crate::types::id::Id< $len $(, $str)? > as
+                    ::calimero_sdk::abi::AbiType>::type_ref(reg)
             }
         }
     };

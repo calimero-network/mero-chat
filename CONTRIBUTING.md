@@ -54,8 +54,7 @@ cd logic
 rustup target add wasm32-unknown-unknown
 
 # Build the contract
-chmod +x ./build.sh
-./build.sh
+cargo mero build
 ```
 
 The compiled `.wasm` file will be placed in the `res/` directory.
@@ -71,8 +70,7 @@ cd logic-js
 pnpm install
 
 # Build the contract
-chmod +x ./build.sh
-./build.sh
+cargo mero build
 ```
 
 ### App (React/TypeScript)
