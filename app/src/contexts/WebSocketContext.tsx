@@ -7,7 +7,7 @@ import React, {
   useState,
 } from "react";
 import { useSubscription } from "@calimero-network/mero-react";
-import type { SseEventData } from "@calimero-network/mero-react";
+import type { SubscriptionEventData } from "@calimero-network/mero-react";
 import type { WebSocketEvent, StateMutationData } from "../types/WebSocketTypes";
 import { log } from "../utils/logger";
 
@@ -38,7 +38,13 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
 
   const eventListenersRef = useRef<Set<WebSocketEventListener>>(new Set());
 
-  const eventCallbackFn = useCallback((event: SseEventData) => {
+  // mero-react 4.6 widened the callback to `SseEventData | GroupMembershipEventData`
+  // so one subscription can carry both context and group traffic. Curb only ever
+  // passes contextIds (never groupIds), but the union is what the overload
+  // demands, so narrow on the discriminating field: group events carry `groupId`
+  // and no `contextId`, and there is no WebSocketEvent to build from them.
+  const eventCallbackFn = useCallback((event: SubscriptionEventData) => {
+    if (!("contextId" in event)) return;
     log.info("WebSocketContext", `[SSE] event received contextId=${event.contextId}`, event.data);
     const wsEvent: WebSocketEvent = {
       contextId: event.contextId,
