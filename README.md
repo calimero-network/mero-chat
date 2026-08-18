@@ -42,7 +42,7 @@ cargo mero build
 `calimero-sdk` tag in `logic/Cargo.toml`:
 
 ```bash title="Terminal"
-cargo install --git https://github.com/calimero-network/core --tag 0.11.0-rc.20 cargo-mero --locked
+cargo install --git https://github.com/calimero-network/core --tag 0.11.0-rc.24 cargo-mero --locked
 ```
 
 ## App

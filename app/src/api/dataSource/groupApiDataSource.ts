@@ -489,6 +489,35 @@ export class GroupApiDataSource implements GroupApi {
     }
   }
 
+  /**
+   * Ask the NODE who it is — `{ accountId, deviceId?, publicKey }`.
+   *
+   * core 0.11.0-rc.23 (#3522) deleted `GET /namespaces/:id/identity` and
+   * dropped `selfIdentity` from the member listing: "who am I" is a node-level
+   * question and one identity is shared across namespaces. Cached like every
+   * other read here, because several callers ask during one render.
+   */
+  async getNodeIdentity(): ApiResponse<{ accountId: string }> {
+    return cachedRequest("nodeIdentity", async () => {
+      try {
+        const response = await axios.get(`${this.base()}/identity`, {
+          headers: getAuthHeaders(),
+        });
+        if (response.status !== 200) {
+          return httpFail(response.status, response.statusText);
+        }
+        const raw: unknown = response.data.data ?? response.data;
+        const accountId =
+          raw && typeof raw === "object" && "accountId" in raw
+            ? String((raw as { accountId: unknown }).accountId)
+            : "";
+        return ok({ accountId });
+      } catch (error) {
+        return catchError("getNodeIdentity", error);
+      }
+    });
+  }
+
   async listMembers(
     groupId: string,
   ): ApiResponse<{ members: GroupMember[]; selfIdentity?: string }> {
@@ -501,8 +530,8 @@ export class GroupApiDataSource implements GroupApi {
         if (response.status !== 200) {
           return httpFail(response.status, response.statusText);
         }
-        // Handle both wrapped ({ data: { members, selfIdentity } }) and
-        // unwrapped ({ members, selfIdentity }) API response shapes.
+        // Handle both wrapped ({ data: { members } }) and unwrapped
+        // ({ members }) API response shapes.
         const raw: unknown = response.data.data ?? response.data;
         const rawMembers: Array<{ identity: string; role: string; name?: string; alias?: string }> = Array.isArray(raw)
           ? (raw as Array<{ identity: string; role: string; name?: string; alias?: string }>)
@@ -518,10 +547,14 @@ export class GroupApiDataSource implements GroupApi {
           role: m.role as GroupMember["role"],
           alias: m.name ?? m.alias,
         }));
-        const selfIdentity: string | undefined =
-          raw && typeof raw === "object" && "selfIdentity" in raw
-            ? String((raw as { selfIdentity: unknown }).selfIdentity)
-            : undefined;
+        // rc.23 removed `selfIdentity` from this response (#3522). Ask the
+        // node instead and keep the field name, so every caller that compares
+        // it against `member.identity` keeps working — rc.23 also made those
+        // members accounts, so the two are the same kind of value again.
+        // Reading the (now absent) response field instead silently yields
+        // undefined, which reads as "I am not a member of this group".
+        const selfResp = await this.getNodeIdentity();
+        const selfIdentity = selfResp.data?.accountId || undefined;
         return ok({ members, selfIdentity });
       } catch (error) {
         return catchError("listMembers", error);

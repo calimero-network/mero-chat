@@ -223,10 +223,11 @@ export function useGroupContexts() {
               ]);
               const visibility = sgInfoResp?.data?.subgroupVisibility;
               // Direct membership: do I have a GroupMember row on this
-              // subgroup? `selfIdentity` matches an entry only when admin
-              // added me (Restricted) or I created/explicitly joined
-              // (Open). Inherited members via CAN_JOIN_OPEN_SUBGROUPS on
-              // the namespace root never appear here.
+              // subgroup? `selfIdentity` is my ACCOUNT (resolved node-level
+              // since rc.23) and matches an entry only when an admin added me
+              // (Restricted) or I created/explicitly joined (Open). Inherited
+              // members via CAN_JOIN_OPEN_SUBGROUPS on the namespace root
+              // never appear here.
               const selfIdentity = sgMembersResp?.data?.selfIdentity;
               const isDirectMember =
                 !!selfIdentity &&

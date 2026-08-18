@@ -221,6 +221,9 @@ export interface GroupApi {
   joinGroup(
     request: JoinGroupRequest,
   ): ApiResponse<JoinGroupResponse>;
+  /** `{ accountId }` — who this node is. See the data source for why. */
+  getNodeIdentity(): ApiResponse<{ accountId: string }>;
+  /** `selfIdentity` is the caller's ACCOUNT, resolved via `getNodeIdentity`. */
   listMembers(groupId: string): ApiResponse<{ members: GroupMember[]; selfIdentity?: string }>;
   addGroupMember(groupId: string, identity: string): ApiResponse<void>;
   removeMember(

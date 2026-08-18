@@ -18,8 +18,9 @@ members_n2=$(GET "$NODE_2_URL" "/admin-api/groups/${E2E_GROUP_ID}/members" "$AUT
   || { red "node-2 GET members failed"; ASSERT_FAIL=$((ASSERT_FAIL+1)); return; }
 
 # Both nodes should report at least 2 members.
-# Response shape is `{ members: [...], selfIdentity: "…" }` — see
-# mero-js PR #20 / fix(hooks):read-members-field. Old `.data` is gone.
+# Response shape is `{ members: [...] }` — core rc.23 removed `selfIdentity`
+# from it (#3522); "who am I" is now `GET /admin-api/identity`. Old `.data` is
+# gone (mero-js PR #20 / fix(hooks):read-members-field).
 n1_count=$(echo "$members_n1" | jq -r '.members | length // 0' 2>/dev/null || echo 0)
 n2_count=$(echo "$members_n2" | jq -r '.members | length // 0' 2>/dev/null || echo 0)
 
