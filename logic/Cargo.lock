@@ -102,11 +102,22 @@ version = "0.0.0"
 source = "git+https://github.com/calimero-network/core.git?tag=0.11.0-rc.20#35799596325b33f2acf7b1e54eb79b1b0c2d5b8f"
 dependencies = [
  "borsh",
- "calimero-primitives",
- "calimero-wasm-abi",
+ "calimero-primitives 0.0.0 (git+https://github.com/calimero-network/core.git?tag=0.11.0-rc.20)",
+ "calimero-wasm-abi 0.0.0 (git+https://github.com/calimero-network/core.git?tag=0.11.0-rc.20)",
  "hex",
  "serde",
  "sha2",
+ "thiserror 1.0.69",
+]
+
+[[package]]
+name = "calimero-account"
+version = "0.0.0"
+source = "git+https://github.com/calimero-network/core.git?tag=0.11.0-rc.25#d6308156ad733b690d2f800f22f2df5faecc6424"
+dependencies = [
+ "borsh",
+ "calimero-primitives 0.0.0 (git+https://github.com/calimero-network/core.git?tag=0.11.0-rc.25)",
+ "hex",
  "thiserror 1.0.69",
 ]
 
@@ -116,7 +127,18 @@ version = "0.0.0"
 source = "git+https://github.com/calimero-network/core.git?tag=0.11.0-rc.20#35799596325b33f2acf7b1e54eb79b1b0c2d5b8f"
 dependencies = [
  "borsh",
- "calimero-primitives",
+ "calimero-primitives 0.0.0 (git+https://github.com/calimero-network/core.git?tag=0.11.0-rc.20)",
+ "serde",
+ "sha2",
+]
+
+[[package]]
+name = "calimero-prelude"
+version = "0.0.0"
+source = "git+https://github.com/calimero-network/core.git?tag=0.11.0-rc.25#d6308156ad733b690d2f800f22f2df5faecc6424"
+dependencies = [
+ "borsh",
+ "calimero-primitives 0.0.0 (git+https://github.com/calimero-network/core.git?tag=0.11.0-rc.25)",
  "serde",
  "sha2",
 ]
@@ -128,7 +150,27 @@ source = "git+https://github.com/calimero-network/core.git?tag=0.11.0-rc.20#3579
 dependencies = [
  "borsh",
  "bs58",
- "calimero-wasm-abi",
+ "calimero-wasm-abi 0.0.0 (git+https://github.com/calimero-network/core.git?tag=0.11.0-rc.20)",
+ "ed25519-dalek",
+ "eyre",
+ "hex",
+ "multiaddr",
+ "serde",
+ "serde_json",
+ "sha2",
+ "thiserror 1.0.69",
+ "url",
+ "zeroize",
+]
+
+[[package]]
+name = "calimero-primitives"
+version = "0.0.0"
+source = "git+https://github.com/calimero-network/core.git?tag=0.11.0-rc.25#d6308156ad733b690d2f800f22f2df5faecc6424"
+dependencies = [
+ "borsh",
+ "bs58",
+ "calimero-wasm-abi 0.0.0 (git+https://github.com/calimero-network/core.git?tag=0.11.0-rc.25)",
  "ed25519-dalek",
  "eyre",
  "hex",
@@ -147,12 +189,29 @@ version = "0.0.0"
 source = "git+https://github.com/calimero-network/core.git?tag=0.11.0-rc.20#35799596325b33f2acf7b1e54eb79b1b0c2d5b8f"
 dependencies = [
  "borsh",
- "calimero-account",
- "calimero-prelude",
- "calimero-primitives",
- "calimero-sdk-macros",
- "calimero-sys",
- "calimero-wasm-abi",
+ "calimero-account 0.0.0 (git+https://github.com/calimero-network/core.git?tag=0.11.0-rc.20)",
+ "calimero-prelude 0.0.0 (git+https://github.com/calimero-network/core.git?tag=0.11.0-rc.20)",
+ "calimero-primitives 0.0.0 (git+https://github.com/calimero-network/core.git?tag=0.11.0-rc.20)",
+ "calimero-sdk-macros 0.0.0 (git+https://github.com/calimero-network/core.git?tag=0.11.0-rc.20)",
+ "calimero-sys 0.0.0 (git+https://github.com/calimero-network/core.git?tag=0.11.0-rc.20)",
+ "calimero-wasm-abi 0.0.0 (git+https://github.com/calimero-network/core.git?tag=0.11.0-rc.20)",
+ "serde",
+ "serde_json",
+ "sha2",
+]
+
+[[package]]
+name = "calimero-sdk"
+version = "0.0.0"
+source = "git+https://github.com/calimero-network/core.git?tag=0.11.0-rc.25#d6308156ad733b690d2f800f22f2df5faecc6424"
+dependencies = [
+ "borsh",
+ "calimero-account 0.0.0 (git+https://github.com/calimero-network/core.git?tag=0.11.0-rc.25)",
+ "calimero-prelude 0.0.0 (git+https://github.com/calimero-network/core.git?tag=0.11.0-rc.25)",
+ "calimero-primitives 0.0.0 (git+https://github.com/calimero-network/core.git?tag=0.11.0-rc.25)",
+ "calimero-sdk-macros 0.0.0 (git+https://github.com/calimero-network/core.git?tag=0.11.0-rc.25)",
+ "calimero-sys 0.0.0 (git+https://github.com/calimero-network/core.git?tag=0.11.0-rc.25)",
+ "calimero-wasm-abi 0.0.0 (git+https://github.com/calimero-network/core.git?tag=0.11.0-rc.25)",
  "serde",
  "serde_json",
  "sha2",
@@ -172,17 +231,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "calimero-sdk-macros"
+version = "0.0.0"
+source = "git+https://github.com/calimero-network/core.git?tag=0.11.0-rc.25#d6308156ad733b690d2f800f22f2df5faecc6424"
+dependencies = [
+ "prettyplease",
+ "proc-macro2",
+ "quote",
+ "sha2",
+ "syn",
+ "thiserror 1.0.69",
+]
+
+[[package]]
 name = "calimero-storage"
 version = "0.0.0"
 source = "git+https://github.com/calimero-network/core.git?tag=0.11.0-rc.20#35799596325b33f2acf7b1e54eb79b1b0c2d5b8f"
 dependencies = [
  "borsh",
- "calimero-account",
- "calimero-prelude",
- "calimero-primitives",
- "calimero-sdk",
+ "calimero-account 0.0.0 (git+https://github.com/calimero-network/core.git?tag=0.11.0-rc.20)",
+ "calimero-prelude 0.0.0 (git+https://github.com/calimero-network/core.git?tag=0.11.0-rc.20)",
+ "calimero-primitives 0.0.0 (git+https://github.com/calimero-network/core.git?tag=0.11.0-rc.20)",
+ "calimero-sdk 0.0.0 (git+https://github.com/calimero-network/core.git?tag=0.11.0-rc.20)",
  "calimero-storage-macros",
- "calimero-wasm-abi",
+ "calimero-wasm-abi 0.0.0 (git+https://github.com/calimero-network/core.git?tag=0.11.0-rc.20)",
  "ed25519-dalek",
  "eyre",
  "fixedstr",
@@ -213,9 +285,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "calimero-sys"
+version = "0.0.0"
+source = "git+https://github.com/calimero-network/core.git?tag=0.11.0-rc.25#d6308156ad733b690d2f800f22f2df5faecc6424"
+dependencies = [
+ "cfg-if",
+]
+
+[[package]]
 name = "calimero-wasm-abi"
 version = "0.0.0"
 source = "git+https://github.com/calimero-network/core.git?tag=0.11.0-rc.20#35799596325b33f2acf7b1e54eb79b1b0c2d5b8f"
+dependencies = [
+ "indexmap",
+ "serde",
+ "serde_json",
+ "thiserror 1.0.69",
+ "wasmparser",
+]
+
+[[package]]
+name = "calimero-wasm-abi"
+version = "0.0.0"
+source = "git+https://github.com/calimero-network/core.git?tag=0.11.0-rc.25#d6308156ad733b690d2f800f22f2df5faecc6424"
 dependencies = [
  "indexmap",
  "serde",
@@ -275,7 +367,7 @@ dependencies = [
  "borsh",
  "borsh-derive",
  "bs58",
- "calimero-sdk",
+ "calimero-sdk 0.0.0 (git+https://github.com/calimero-network/core.git?tag=0.11.0-rc.25)",
  "calimero-storage",
  "calimero-storage-macros",
  "thiserror 1.0.69",
