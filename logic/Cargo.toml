@@ -44,7 +44,7 @@ bs58 = "0.5.1"
 # the exact same tag (the workspace version at a tag is 0.0.0).
 calimero-sdk = { git = "https://github.com/calimero-network/core.git", tag = "0.11.0-rc.20" }
 calimero-storage = { git = "https://github.com/calimero-network/core.git", tag = "0.11.0-rc.20" }
-calimero-storage-macros = { git = "https://github.com/calimero-network/core.git", tag = "0.11.0-rc.20" }
+calimero-storage-macros = { git = "https://github.com/calimero-network/core.git", tag = "0.11.0-rc.27" }
 thiserror = "1.0.56"
 
 [dev-dependencies]
